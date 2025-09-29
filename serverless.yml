@@ -1,0 +1,22 @@
+service: beneficio-joven-api
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+
+plugins:
+  - serverless-offline
+
+functions:
+  test:
+    handler: src/handlers/test.handler
+    events:
+      - http:
+          path: test
+          method: get
+          cors: true
+
+custom:
+  serverless-offline:
+    httpPort: 3000
