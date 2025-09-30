@@ -3,7 +3,13 @@ service: beneficio-joven-api
 provider:
   name: aws
   runtime: nodejs18.x
-  region: us-east-1
+  region: us-east-2
+  environment:
+    DB_HOST: ${env:DB_HOST}
+    DB_USER: ${env:DB_USER}
+    DB_PASSWORD: ${env:DB_PASSWORD}
+    DB_NAME: ${env:DB_NAME}
+    JWT_SECRET: ${env:JWT_SECRET}
 
 plugins:
   - serverless-offline
@@ -11,10 +17,29 @@ plugins:
 functions:
   test:
     handler: src/handlers/test.handler
+    timeout: 30
     events:
       - http:
           path: test
           method: get
+          cors: true
+  
+  login:
+    handler: src/handlers/auth/login.handler
+    timeout: 30
+    events:
+      - http:
+          path: auth/login
+          method: post
+          cors: true
+  
+  register:
+    handler: src/handlers/auth/register.handler
+    timeout: 30
+    events:
+      - http:
+          path: auth/register
+          method: post
           cors: true
 
 custom:
