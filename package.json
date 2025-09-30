@@ -1,5 +1,5 @@
 {
-  "name": "Beneficio_Joven_Backend",
+  "name": "beneficio_joven_backend",
   "version": "1.0.0",
   "lockfileVersion": 3,
   "requires": true,
@@ -25,9 +25,23 @@
     "dotenv": "^17.2.2",
     "joi": "^18.0.1",
     "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.15.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
     "serverless-offline": "^14.4.0"
-  }
+  },
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MasterJuan579/Beneficio_Joven_Backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MasterJuan579/Beneficio_Joven_Backend/issues"
+  },
+  "homepage": "https://github.com/MasterJuan579/Beneficio_Joven_Backend#readme",
+  "description": ""
 }
