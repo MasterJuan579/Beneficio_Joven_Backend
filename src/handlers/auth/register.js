@@ -3,7 +3,6 @@ const bcrypt = require('bcryptjs');
 const { getConnection } = require('../../config/database');
 const SECURITY_CONFIG = require('../../config/security');
 const Joi = require('joi');
-const { v4: uuidv4 } = require('uuid');
 
 const registerSchema = Joi.object({
   email: Joi.string().email().required(),
