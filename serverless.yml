@@ -33,12 +33,30 @@ functions:
           method: post
           cors: true
   
-  register:
-    handler: src/handlers/auth/register.handler
+  registerBeneficiario:
+    handler: src/handlers/auth/register-beneficiario.handler
     timeout: 30
     events:
       - http:
-          path: auth/register
+          path: auth/register/beneficiario
+          method: post
+          cors: true
+  
+  registerDueno:
+    handler: src/handlers/auth/register-dueno.handler
+    timeout: 30
+    events:
+      - http:
+          path: auth/register/dueno
+          method: post
+          cors: true
+  
+  registerAdmin:
+    handler: src/handlers/auth/register-admin.handler
+    timeout: 30
+    events:
+      - http:
+          path: auth/register/admin
           method: post
           cors: true
 
