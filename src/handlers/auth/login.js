@@ -3,10 +3,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { getConnection } = require('../../config/database');
 const SECURITY_CONFIG = require('../../config/security');
-const { checkRateLimit } = require('../../utils/ratelimit');
+const { checkRateLimit } = require('../../utils/rateLimit');
 const Joi = require('joi');
 
-// Validación con email y contraseña
 const loginSchema = Joi.object({
   email: Joi.string().email().required().messages({
     'string.email': 'Email inválido',
@@ -33,7 +32,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    // 1. Rate Limiting - protege contra ataques de fuerza bruta
+    // 1. Rate Limiting
     const ip = event.requestContext?.identity?.sourceIp || 'unknown';
     const rateLimitResult = checkRateLimit(ip, SECURITY_CONFIG.MAX_LOGIN_ATTEMPTS);
     
@@ -49,7 +48,7 @@ exports.handler = async (event) => {
       };
     }
 
-    // 2. Validación de entrada - previene datos malformados
+    // 2. Validación de entrada
     const body = JSON.parse(event.body);
     const { error, value } = loginSchema.validate(body);
     
@@ -68,13 +67,52 @@ exports.handler = async (event) => {
     const { email, password } = value;
     const connection = await getConnection();
 
-    // 3. Buscar usuario por email
-    const [rows] = await connection.execute(
-      'SELECT idBeneficiario, email, passwordHash, primerNombre, segundoNombre, apellidoPaterno, apellidoMaterno, fechaNacimiento, folio FROM Beneficiario WHERE email = ?',
-      [email.toLowerCase()] // Normalizar email a minúsculas
+    let user = null;
+    let userType = null;
+    let passwordHash = null;
+
+    // 3. Buscar en Beneficiario
+    const [beneficiarios] = await connection.execute(
+      'SELECT idBeneficiario as id, email, passwordHash, primerNombre, apellidoPaterno, folio FROM Beneficiario WHERE email = ?',
+      [email.toLowerCase()]
     );
 
-    if (rows.length === 0) {
+    if (beneficiarios.length > 0) {
+      user = beneficiarios[0];
+      userType = 'beneficiario';
+      passwordHash = user.passwordHash;
+    }
+
+    // 4. Si no existe, buscar en Dueno
+    if (!user) {
+      const [duenos] = await connection.execute(
+        'SELECT idDueno as id, email, passwordHash, nombreUsuario FROM Dueno WHERE email = ?',
+        [email.toLowerCase()]
+      );
+
+      if (duenos.length > 0) {
+        user = duenos[0];
+        userType = 'dueno';
+        passwordHash = user.passwordHash;
+      }
+    }
+
+    // 5. Si no existe, buscar en Administrador
+    if (!user) {
+      const [admins] = await connection.execute(
+        'SELECT idAdministrador as id, email, masterPassword as passwordHash, nombreUsuario FROM Administrador WHERE email = ?',
+        [email.toLowerCase()]
+      );
+
+      if (admins.length > 0) {
+        user = admins[0];
+        userType = 'administrador';
+        passwordHash = user.passwordHash;
+      }
+    }
+
+    // 6. Si no existe en ninguna tabla
+    if (!user) {
       console.log(`Login failed: User not found for email ${email}`);
       return {
         statusCode: 401,
@@ -86,10 +124,8 @@ exports.handler = async (event) => {
       };
     }
 
-    const user = rows[0];
-
-    // 4. Verificar contraseña con bcrypt - comparación segura
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    // 7. Verificar contraseña con bcrypt
+    const isValidPassword = await bcrypt.compare(password, passwordHash);
 
     if (!isValidPassword) {
       console.log(`Login failed: Invalid password for email ${email}`);
@@ -103,21 +139,34 @@ exports.handler = async (event) => {
       };
     }
 
-    // 5. Generar JWT token seguro
+    // 8. Generar JWT token con el role
     const token = jwt.sign(
       { 
-        id: user.idBeneficiario,
+        id: user.id,
         email: user.email,
-        folio: user.folio,
-        role: 'beneficiario'
+        role: userType
       },
       SECURITY_CONFIG.JWT_SECRET,
       { expiresIn: SECURITY_CONFIG.JWT_EXPIRES }
     );
 
-    console.log(`Login successful for user ${user.idBeneficiario}`);
+    console.log(`Login successful for ${userType} ${user.id}`);
 
-    // 6. Respuesta exitosa (NO enviar datos sensibles)
+    // 9. Preparar respuesta según el tipo de usuario
+    let userData = {
+      id: user.id,
+      email: user.email,
+      role: userType
+    };
+
+    if (userType === 'beneficiario') {
+      userData.nombre = `${user.primerNombre} ${user.apellidoPaterno}`;
+      userData.folio = user.folio;
+    } else {
+      userData.nombreUsuario = user.nombreUsuario;
+    }
+
+    // 10. Respuesta exitosa
     return {
       statusCode: 200,
       headers,
@@ -125,12 +174,7 @@ exports.handler = async (event) => {
         success: true,
         message: 'Login exitoso',
         token,
-        user: {
-          id: user.idBeneficiario,
-          nombre: `${user.primerNombre} ${user.apellidoPaterno}`,
-          email: user.email,
-          folio: user.folio
-        }
+        user: userData
       })
     };
 
