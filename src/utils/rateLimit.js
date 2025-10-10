@@ -1,7 +1,7 @@
 // Almacén temporal de intentos (en producción usarías Redis/DynamoDB)
 const attempts = new Map();
 
-const checkRateLimit = (identifier, maxAttempts = 5, windowMs = 15 * 60 * 1000) => {
+const checkRateLimit = (identifier, maxAttempts = 20, windowMs = 15 * 60 * 1000) => {
   const now = Date.now();
   const userAttempts = attempts.get(identifier);
 

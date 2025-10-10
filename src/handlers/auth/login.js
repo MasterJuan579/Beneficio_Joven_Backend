@@ -3,7 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { getConnection } = require('../../config/database');
 const SECURITY_CONFIG = require('../../config/security');
-const { checkRateLimit } = require('../../utils/rateLimit');
+const { checkRateLimit } = require('../../utils/ratelimit');
 const Joi = require('joi');
 
 const loginSchema = Joi.object({
