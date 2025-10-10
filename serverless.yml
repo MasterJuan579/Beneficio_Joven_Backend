@@ -34,7 +34,7 @@ functions:
           cors: true
   
   registerBeneficiario:
-    handler: src/handlers/auth/register-beneficiario.handler
+    handler: src/handlers/auth/register.handler
     timeout: 30
     events:
       - http:
@@ -58,6 +58,15 @@ functions:
       - http:
           path: auth/register/admin
           method: post
+          cors: true
+  
+  dashboardStats:
+    handler: src/handlers/admin/dashboard-stats.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/dashboard/stats
+          method: get
           cors: true
 
 custom:

@@ -352,27 +352,7 @@ npm run test-db
 serverless logs -f test --tail
 ```
 
-## Costos AWS Estimados
 
-- Lambda: ~$0.20/millón de requests
-- API Gateway: ~$1.00/millón de requests  
-- Aurora RDS: ~$50-80/mes (db.t3.small)
-- **Total estimado**: $50-100/mes para desarrollo
-
-## Próximos Pasos
-
-1. Implementar endpoints de promociones
-2. Agregar CRUD de establecimientos
-3. Implementar validación de QR codes
-4. Agregar middleware de autenticación JWT
-5. Implementar roles y permisos
-6. Agregar tests unitarios
-7. Configurar CI/CD
-
-## Contacto y Soporte
-
-- **Repositorio**: https://github.com/MasterJuan579/Beneficio_Joven_Backend
-- **Issues**: https://github.com/MasterJuan579/Beneficio_Joven_Backend/issues
 
 ## Licencia
 

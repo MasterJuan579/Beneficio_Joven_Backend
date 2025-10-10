@@ -26,16 +26,17 @@ const verifyToken = (event) => {
     // 3. Verificar y decodificar el token
     const decoded = jwt.verify(token, SECURITY_CONFIG.JWT_SECRET);
     
-    // 4. Validar que el token tenga la estructura esperada
+    // 4. Validar que el token tenga la estructura mínima esperada
     if (!decoded.id || !decoded.email || !decoded.role) {
       throw new Error('Token con estructura inválida');
     }
 
     // 5. Retornar la información del usuario
+    // Nota: folio solo existe para beneficiarios, es opcional
     return {
       id: decoded.id,
       email: decoded.email,
-      folio: decoded.folio,
+      folio: decoded.folio || null, // ← CAMBIO: folio es opcional
       role: decoded.role
     };
     
