@@ -69,6 +69,24 @@ functions:
           method: get
           cors: true
 
+  listSucursales:
+    handler: src/handlers/admin/list-sucursales.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/sucursales
+          method: get
+          cors: true
+        
+  listDuenos:
+    handler: src/handlers/admin/list-duenos.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/duenos
+          method: get
+          cors: true
+
 custom:
   serverless-offline:
     httpPort: 3000
