@@ -15,7 +15,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    // 🔐 Verificar que sea administrador
+    // Verificar que sea administrador
     const user = verifyRole(event, ['administrador']);
     
     console.log(`Admin ${user.id} (${user.email}) solicitó estadísticas del dashboard`);

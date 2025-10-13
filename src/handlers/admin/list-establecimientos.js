@@ -18,41 +18,39 @@ exports.handler = async (event) => {
     // Verificar que sea administrador
     const user = verifyRole(event, ['administrador']);
     
-    console.log(`Admin ${user.id} solicitó lista de dueños`);
+    console.log(`Admin ${user.id} solicitó lista de establecimientos`);
 
     const connection = await getConnection();
 
-    // Query para obtener todos los dueños con la cantidad de establecimientos
-    const [duenos] = await connection.execute(`
+    // Query simplificada - solo 3 campos
+    const [establecimientos] = await connection.execute(`
       SELECT 
-        d.idDueno,
-        d.email,
-        d.nombreUsuario,
-        d.fechaRegistro,
-        d.activo,
-        COUNT(de.idEstablecimiento) AS cantidadEstablecimientos
-      FROM Dueno d
-      LEFT JOIN DuenoEstablecimiento de ON d.idDueno = de.idDueno
-      GROUP BY d.idDueno, d.email, d.nombreUsuario, d.fechaRegistro, d.activo
-      ORDER BY d.fechaRegistro DESC
+        e.idEstablecimiento,
+        (SELECT s.nombre 
+         FROM Sucursal s 
+         WHERE s.idEstablecimiento = e.idEstablecimiento 
+         LIMIT 1) AS nombreEstablecimiento,
+        GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS categoria
+      FROM Establecimiento e
+      LEFT JOIN CategoriaEstablecimiento ce ON e.idEstablecimiento = ce.idEstablecimiento
+      LEFT JOIN Categoria c ON ce.idCategoria = c.idCategoria
+      GROUP BY e.idEstablecimiento
+      ORDER BY e.fechaRegistro DESC
     `);
 
-    // Obtener total de dueños
+    // Obtener total de establecimientos
     const [totalResult] = await connection.execute(
-      'SELECT COUNT(*) as total FROM Dueno'
+      'SELECT COUNT(*) as total FROM Establecimiento'
     );
 
-    // Formatear los datos
-    const data = duenos.map(dueno => ({
-      idDueno: dueno.idDueno,
-      email: dueno.email,
-      nombreUsuario: dueno.nombreUsuario,
-      fechaRegistro: dueno.fechaRegistro,
-      activo: dueno.activo,
-      cantidadEstablecimientos: dueno.cantidadEstablecimientos
+    // Formatear los datos - solo 3 campos
+    const data = establecimientos.map(establecimiento => ({
+      idEstablecimiento: establecimiento.idEstablecimiento,
+      nombreEstablecimiento: establecimiento.nombreEstablecimiento || 'Sin nombre',
+      categoria: establecimiento.categoria || 'Sin categoría'
     }));
 
-    console.log(`Se encontraron ${data.length} dueños`);
+    console.log(`Se encontraron ${data.length} establecimientos`);
 
     return {
       statusCode: 200,
@@ -65,7 +63,7 @@ exports.handler = async (event) => {
     };
 
   } catch (error) {
-    console.error('Error obteniendo dueños:', error);
+    console.error('Error obteniendo establecimientos:', error);
 
     if (error.message.includes('Token') || error.message.includes('Acceso denegado')) {
       return {
@@ -83,7 +81,7 @@ exports.handler = async (event) => {
       headers,
       body: JSON.stringify({
         success: false,
-        message: 'Error al obtener dueños',
+        message: 'Error al obtener establecimientos',
         error: error.message
       })
     };

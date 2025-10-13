@@ -17,12 +17,10 @@ exports.handler = async (event) => {
   try {
     // Verificar que sea administrador
     const user = verifyRole(event, ['administrador']);
-    
     console.log(`Admin ${user.id} solicitó lista de sucursales`);
 
     const connection = await getConnection();
 
-    // Query para obtener todas las sucursales con su información relacionada
     const [sucursales] = await connection.execute(`
       SELECT 
         s.idSucursal,
@@ -33,6 +31,7 @@ exports.handler = async (event) => {
         s.longitud,
         s.horaApertura,
         s.horaCierre,
+        s.activo,                     -- ← campo movido aquí
         e.idEstablecimiento,
         e.logoURL,
         GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS categorias,
@@ -46,14 +45,12 @@ exports.handler = async (event) => {
       LEFT JOIN DuenoEstablecimiento de ON e.idEstablecimiento = de.idEstablecimiento
       LEFT JOIN Dueno d ON de.idDueno = d.idDueno
       GROUP BY s.idSucursal, s.nombre, s.numSucursal, s.direccion, s.latitud, s.longitud, 
-               s.horaApertura, s.horaCierre, e.idEstablecimiento, e.logoURL, s.fechaRegistro
+               s.horaApertura, s.horaCierre, s.activo, e.idEstablecimiento, e.logoURL, s.fechaRegistro
       ORDER BY s.fechaRegistro DESC
     `);
 
-    // Obtener el total de sucursales
-    const [totalResult] = await connection.execute(
-      'SELECT COUNT(*) as total FROM Sucursal'
-    );
+    // Total de sucursales
+    const [totalResult] = await connection.execute('SELECT COUNT(*) as total FROM Sucursal');
 
     // Formatear los datos
     const data = sucursales.map(sucursal => ({
@@ -77,7 +74,7 @@ exports.handler = async (event) => {
       categoria: sucursal.categorias || 'Sin categoría',
       duenos: sucursal.nombresDuenos ? sucursal.nombresDuenos.split(', ') : [],
       idsDuenos: sucursal.idsDuenos ? sucursal.idsDuenos.split(',').map(id => parseInt(id)) : [],
-      activo: true,
+      activo: sucursal.activo === 1 || sucursal.activo === true,
       fechaRegistro: sucursal.fechaRegistro
     }));
 
@@ -88,7 +85,7 @@ exports.handler = async (event) => {
       headers,
       body: JSON.stringify({
         success: true,
-        data: data,
+        data,
         total: totalResult[0].total
       })
     };
