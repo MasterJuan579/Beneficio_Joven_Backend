@@ -73,7 +73,7 @@ exports.handler = async (event) => {
 
     // 3. Buscar en Beneficiario
     const [beneficiarios] = await connection.execute(
-      'SELECT idBeneficiario as id, email, passwordHash, primerNombre, apellidoPaterno, folio FROM Beneficiario WHERE email = ?',
+      'SELECT idBeneficiario as id, email, passwordHash, primerNombre, apellidoPaterno, folio, activo FROM Beneficiario WHERE email = ?',
       [email.toLowerCase()]
     );
 
@@ -86,7 +86,7 @@ exports.handler = async (event) => {
     // 4. Si no existe, buscar en Dueno
     if (!user) {
       const [duenos] = await connection.execute(
-        'SELECT idDueno as id, email, passwordHash, nombreUsuario FROM Dueno WHERE email = ?',
+        'SELECT idDueno as id, email, passwordHash, nombreUsuario, activo FROM Dueno WHERE email = ?',
         [email.toLowerCase()]
       );
 
@@ -108,6 +108,8 @@ exports.handler = async (event) => {
         user = admins[0];
         userType = 'administrador';
         passwordHash = user.passwordHash;
+        // Los administradores siempre están activos (no tienen campo activo)
+        user.activo = true;
       }
     }
 
@@ -124,7 +126,20 @@ exports.handler = async (event) => {
       };
     }
 
-    // 7. Verificar contraseña con bcrypt
+    // 7. Verificar si el usuario está activo (solo para beneficiarios y dueños)
+    if (userType !== 'administrador' && !user.activo) {
+      console.log(`Login failed: User ${user.id} (${userType}) is inactive`);
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          message: 'Tu cuenta ha sido desactivada. Contacta al administrador.'
+        })
+      };
+    }
+
+    // 8. Verificar contraseña con bcrypt
     const isValidPassword = await bcrypt.compare(password, passwordHash);
 
     if (!isValidPassword) {
@@ -139,7 +154,7 @@ exports.handler = async (event) => {
       };
     }
 
-    // 8. Generar JWT token con el role
+    // 9. Generar JWT token con el role
     const token = jwt.sign(
       { 
         id: user.id,
@@ -152,7 +167,7 @@ exports.handler = async (event) => {
 
     console.log(`Login successful for ${userType} ${user.id}`);
 
-    // 9. Preparar respuesta según el tipo de usuario
+    // 10. Preparar respuesta según el tipo de usuario
     let userData = {
       id: user.id,
       email: user.email,
@@ -162,11 +177,13 @@ exports.handler = async (event) => {
     if (userType === 'beneficiario') {
       userData.nombre = `${user.primerNombre} ${user.apellidoPaterno}`;
       userData.folio = user.folio;
+    } else if (userType !== 'administrador') {
+      userData.nombreUsuario = user.nombreUsuario;
     } else {
       userData.nombreUsuario = user.nombreUsuario;
     }
 
-    // 10. Respuesta exitosa
+    // 11. Respuesta exitosa
     return {
       statusCode: 200,
       headers,

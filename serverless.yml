@@ -69,6 +69,71 @@ functions:
           method: get
           cors: true
 
+  listSucursales:
+    handler: src/handlers/admin/list-sucursales.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/sucursales
+          method: get
+          cors: true
+        
+  listDuenos:
+    handler: src/handlers/admin/list-duenos.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/duenos
+          method: get
+          cors: true
+
+  listEstablecimientos:
+    handler: src/handlers/admin/list-establecimientos.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/establecimiento
+          method: get
+          cors: true
+  
+  toggleDuenoStatus:
+    handler: src/handlers/admin/toggle-dueno-status.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/duenos/{id}/toggle-status
+          method: patch
+          cors: true
+  
+  updateDueno:
+    handler: src/handlers/admin/update-dueno.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/duenos/{id}
+          method: put
+          cors: true
+
+  toggleEstablecimientoStatus:
+    handler: src/handlers/admin/toggle-establecimiento-status.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/sucursales/{id}/toggle-status
+          method: patch
+          cors: true
+  
+  adminReports:
+    handler: src/handlers/admin/admin-reports.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/reports
+          method: get
+          cors: true
+    
+  
+
 custom:
   serverless-offline:
     httpPort: 3000
