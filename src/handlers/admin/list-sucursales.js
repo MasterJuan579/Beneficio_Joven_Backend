@@ -7,111 +7,86 @@ exports.handler = async (event) => {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    'Access-Control-Allow-Methods': 'GET,OPTIONS'
+    'Access-Control-Allow-Methods': 'GET,OPTIONS',
   };
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
+  if (event.httpMethod !== 'GET') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ message: 'Método no permitido' }),
+    };
+  }
+
   try {
-    // Verificar que sea administrador
-    const user = verifyRole(event, ['administrador']);
-    console.log(`Admin ${user.id} solicitó lista de sucursales`);
+    const user = verifyRole(event, ['administrador', 'dueno']);
+    console.log(`👤 Usuario ${user.id} solicitando lista de sucursales`);
 
     const connection = await getConnection();
 
-    const [sucursales] = await connection.execute(`
+    const [rows] = await connection.execute(`
       SELECT 
         s.idSucursal,
         s.nombre AS nombreSucursal,
-        s.numSucursal,
         s.direccion,
         s.latitud,
         s.longitud,
         s.horaApertura,
         s.horaCierre,
-        s.activo,                     -- ← campo movido aquí
+        s.activo,
+        s.fechaRegistro,
         e.idEstablecimiento,
+        e.nombre AS nombreEstablecimiento,
         e.logoURL,
-        GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS categorias,
-        GROUP_CONCAT(DISTINCT d.idDueno) AS idsDuenos,
-        GROUP_CONCAT(DISTINCT d.nombreUsuario SEPARATOR ', ') AS nombresDuenos,
-        s.fechaRegistro
+        c.nombre AS categoria,
+        (
+          SELECT JSON_ARRAYAGG(urlImagen)
+          FROM SucursalImagen si
+          WHERE si.idSucursal = s.idSucursal
+        ) AS imagenes
       FROM Sucursal s
       INNER JOIN Establecimiento e ON s.idEstablecimiento = e.idEstablecimiento
       LEFT JOIN CategoriaEstablecimiento ce ON e.idEstablecimiento = ce.idEstablecimiento
       LEFT JOIN Categoria c ON ce.idCategoria = c.idCategoria
-      LEFT JOIN DuenoEstablecimiento de ON e.idEstablecimiento = de.idEstablecimiento
-      LEFT JOIN Dueno d ON de.idDueno = d.idDueno
-      GROUP BY s.idSucursal, s.nombre, s.numSucursal, s.direccion, s.latitud, s.longitud, 
-               s.horaApertura, s.horaCierre, s.activo, e.idEstablecimiento, e.logoURL, s.fechaRegistro
-      ORDER BY s.fechaRegistro DESC
+      ORDER BY s.fechaRegistro DESC;
     `);
 
-    // Total de sucursales
-    const [totalResult] = await connection.execute('SELECT COUNT(*) as total FROM Sucursal');
-
-    // Formatear los datos
-    const data = sucursales.map(sucursal => ({
-      idSucursal: sucursal.idSucursal,
-      nombreSucursal: sucursal.nombreSucursal,
-      numSucursal: sucursal.numSucursal,
-      nombreComercio: sucursal.nombreSucursal,
-      direccion: sucursal.direccion,
-      ubicacion: {
-        latitud: sucursal.latitud ? parseFloat(sucursal.latitud) : null,
-        longitud: sucursal.longitud ? parseFloat(sucursal.longitud) : null
-      },
-      horario: {
-        apertura: sucursal.horaApertura,
-        cierre: sucursal.horaCierre
-      },
-      establecimiento: {
-        idEstablecimiento: sucursal.idEstablecimiento,
-        logoURL: sucursal.logoURL
-      },
-      categoria: sucursal.categorias || 'Sin categoría',
-      duenos: sucursal.nombresDuenos ? sucursal.nombresDuenos.split(', ') : [],
-      idsDuenos: sucursal.idsDuenos ? sucursal.idsDuenos.split(',').map(id => parseInt(id)) : [],
-      activo: sucursal.activo === 1 || sucursal.activo === true,
-      fechaRegistro: sucursal.fechaRegistro
-    }));
-
-    console.log(`Se encontraron ${data.length} sucursales`);
+    const total = rows.length;
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        data,
-        total: totalResult[0].total
-      })
+        message: 'Sucursales obtenidas correctamente',
+        total,
+        data: rows.map((s) => ({
+          ...s,
+          imagenes: (() => {
+            try {
+              return s.imagenes ? JSON.parse(s.imagenes) : [];
+            } catch (err) {
+              console.warn(`⚠️ Imagenes inválidas para sucursal ${s.idSucursal}:`, s.imagenes);
+              return [];
+            }
+          })(),
+        })),
+      }),
     };
-
   } catch (error) {
-    console.error('Error obteniendo sucursales:', error);
-
-    if (error.message.includes('Token') || error.message.includes('Acceso denegado')) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({
-          success: false,
-          message: error.message
-        })
-      };
-    }
-
+    console.error('❌ Error al obtener sucursales:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         success: false,
         message: 'Error al obtener sucursales',
-        error: error.message
-      })
+        error: error.message,
+      }),
     };
   }
 };

@@ -16,25 +16,22 @@ exports.handler = async (event) => {
 
   try {
     // Verificar que sea administrador
-    const user = verifyRole(event, ['administrador']);
+    const user = verifyRole(event, ['administrador', 'dueno', 'beneficiario']);
     
     console.log(`Admin ${user.id} solicitó lista de establecimientos`);
 
     const connection = await getConnection();
 
-    // Query simplificada - solo 3 campos
+    // Query simplificada usando e.nombre directamente
     const [establecimientos] = await connection.execute(`
       SELECT 
         e.idEstablecimiento,
-        (SELECT s.nombre 
-         FROM Sucursal s 
-         WHERE s.idEstablecimiento = e.idEstablecimiento 
-         LIMIT 1) AS nombreEstablecimiento,
+        e.nombre AS nombreEstablecimiento,
         GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS categoria
       FROM Establecimiento e
       LEFT JOIN CategoriaEstablecimiento ce ON e.idEstablecimiento = ce.idEstablecimiento
       LEFT JOIN Categoria c ON ce.idCategoria = c.idCategoria
-      GROUP BY e.idEstablecimiento
+      GROUP BY e.idEstablecimiento, e.nombre
       ORDER BY e.fechaRegistro DESC
     `);
 
@@ -43,10 +40,10 @@ exports.handler = async (event) => {
       'SELECT COUNT(*) as total FROM Establecimiento'
     );
 
-    // Formatear los datos - solo 3 campos
+    // Formatear los datos
     const data = establecimientos.map(establecimiento => ({
       idEstablecimiento: establecimiento.idEstablecimiento,
-      nombreEstablecimiento: establecimiento.nombreEstablecimiento || 'Sin nombre',
+      nombreEstablecimiento: establecimiento.nombreEstablecimiento,
       categoria: establecimiento.categoria || 'Sin categoría'
     }));
 
