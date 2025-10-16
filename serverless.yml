@@ -175,6 +175,16 @@ functions:
           path: common/categorias
           method: get
           cors: true
+
+  adminReports:
+    handler: src/handlers/admin/admin-reports.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/reports
+          method: get
+          cors: true
+
   
 
 custom:
