@@ -74,7 +74,7 @@ functions:
     timeout: 30
     events:
       - http:
-          path: admin/sucursales
+          path: admin/get/sucursales
           method: get
           cors: true
         
@@ -88,7 +88,7 @@ functions:
           cors: true
 
   listEstablecimientos:
-    handler: src/handlers/admin/list-establecimientos.handler
+    handler: src/handlers/common/list-establecimientos.handler
     timeout: 30
     events:
       - http:
@@ -131,7 +131,60 @@ functions:
           path: admin/reports
           method: get
           cors: true
-    
+
+  uploadLogo:
+    handler: src/handlers/upload/upload-image.handler
+    timeout: 30
+    events:
+      - http:
+          path: upload-image
+          method: post
+          cors: true
+  createEstablecimiento:
+    handler: src/handlers/admin/create-establecimiento.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/establecimiento
+          method: post
+          cors: true
+  
+  updateEstablecimiento:
+    handler: src/handlers/common/update-establecimiento.handler
+    timeout: 30
+    events:
+      - http:
+          path: common/establecimiento/{id}
+          method: put
+          cors: true
+  
+  createSucursal:
+    handler: src/handlers/admin/create-sucursal.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/post/sucursales
+          method: post
+          cors: true
+  
+  listCategorias:
+    handler: src/handlers/common/list-categorias.handler
+    timeout: 30
+    events:
+      - http:
+          path: common/categorias
+          method: get
+          cors: true
+
+  adminReports:
+    handler: src/handlers/admin/admin-reports.handler
+    timeout: 30
+    events:
+      - http:
+          path: admin/reports
+          method: get
+          cors: true
+
   
 
 custom:
