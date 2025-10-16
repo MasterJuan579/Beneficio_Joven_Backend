@@ -41,8 +41,7 @@ exports.handler = async (event) => {
         s.fechaRegistro,
         e.idEstablecimiento,
         e.nombre AS nombreEstablecimiento,
-        e.logoURL,
-        c.nombre AS categoria,
+        GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS categoria,
         (
           SELECT JSON_ARRAYAGG(urlImagen)
           FROM SucursalImagen si
@@ -52,8 +51,10 @@ exports.handler = async (event) => {
       INNER JOIN Establecimiento e ON s.idEstablecimiento = e.idEstablecimiento
       LEFT JOIN CategoriaEstablecimiento ce ON e.idEstablecimiento = ce.idEstablecimiento
       LEFT JOIN Categoria c ON ce.idCategoria = c.idCategoria
+      GROUP BY s.idSucursal, s.nombre, e.idEstablecimiento, e.nombre
       ORDER BY s.fechaRegistro DESC;
     `);
+
 
     const total = rows.length;
 
