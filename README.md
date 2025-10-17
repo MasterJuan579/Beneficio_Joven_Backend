@@ -479,16 +479,6 @@ region = us-east-2
 "@ | Out-File -FilePath $HOME\.aws\credentials -Encoding ASCII
 ```
 
-**Mac/Linux:**
-```bash
-mkdir -p ~/.aws
-cat > ~/.aws/credentials << 'EOF'
-[default]
-aws_access_key_id = AKIAZ773METU7WGLT55H
-aws_secret_access_key = 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
-region = us-east-2
-EOF
-```
 
 **Verificar:**
 ```bash
