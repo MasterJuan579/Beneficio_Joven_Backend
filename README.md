@@ -185,6 +185,18 @@ cd Beneficio_Joven_Backend
 2. **Instalar dependencias**
 ```bash
 npm install
+npm install -g serverless
+```
+2.1 **Agregar Credenciales AWS**
+
+```bash
+mkdir $HOME\.aws -Force
+@"
+[default]
+aws_access_key_id = xxxxxxxxxxxxxxxxxxxx
+aws_secret_access_key = xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+region = us-east-2
+"@ | Out-File -FilePath $HOME\.aws\credentials -Encoding ASCII a
 ```
 
 3. **Configurar variables de entorno**
@@ -197,24 +209,6 @@ DB_PASSWORD=tu-password
 DB_NAME=BeneficioJoven
 JWT_SECRET=tu-secreto-jwt-super-seguro
 ```
-
-4. **Configurar AWS CLI**
-```bash
-aws configure
-```
-Ingresar:
-- Access Key ID
-- Secret Access Key  
-- Region: us-east-1
-- Output format: json
-
-### Desarrollo Local
-
-```bash
-npm start
-```
-
-Servidor disponible en `http://localhost:3000`
 
 **Endpoints locales:**
 - GET http://localhost:3000/dev/test

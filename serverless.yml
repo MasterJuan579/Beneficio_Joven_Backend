@@ -11,6 +11,7 @@ provider:
     DB_NAME: ${env:DB_NAME}
     JWT_SECRET: ${env:JWT_SECRET}
 
+
 plugins:
   - serverless-offline
 
@@ -70,11 +71,11 @@ functions:
           cors: true
 
   listSucursales:
-    handler: src/handlers/admin/list-sucursales.handler
+    handler: src/handlers/common/list-sucursales.handler
     timeout: 30
     events:
       - http:
-          path: admin/get/sucursales
+          path: common/get/sucursales
           method: get
           cors: true
         
@@ -176,14 +177,6 @@ functions:
           method: get
           cors: true
 
-  adminReports:
-    handler: src/handlers/admin/admin-reports.handler
-    timeout: 30
-    events:
-      - http:
-          path: admin/reports
-          method: get
-          cors: true
 
   
 

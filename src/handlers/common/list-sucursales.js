@@ -24,7 +24,7 @@ exports.handler = async (event) => {
 
   try {
     const user = verifyRole(event, ['administrador', 'dueno']);
-    console.log(`👤 Usuario ${user.id} solicitando lista de sucursales`);
+    console.log(`Usuario ${user.id} solicitando lista de sucursales`);
 
     const connection = await getConnection();
 
