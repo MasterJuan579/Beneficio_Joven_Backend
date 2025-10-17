@@ -14,12 +14,10 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-async function q(conn, sql, params = []) {
-  const [rows] = await conn.query(sql, params);
-  return rows;
-}
+async function q(conn, sql, params = []) { const [rows] = await conn.query(sql, params); return rows; }
 async function runSafe(conn, sql, params = []) {
-  try { return await q(conn, sql, params); } catch { return []; }
+  try { return await q(conn, sql, params); }
+  catch (e) { console.error('SQL error:', e?.code, e?.message, '\nSQL:', sql); return []; }
 }
 function range(col, from, to) {
   const parts = [], params = [];
@@ -37,21 +35,29 @@ exports.handler = async (event) => {
     conn = await getConnection();
 
     const qs = event.queryStringParameters || {};
-    const from = qs.from || null;           // 'YYYY-MM-DD'
-    const to   = qs.to   || null;           // 'YYYY-MM-DD'
+    const from = qs.from || null;    // YYYY-MM-DD
+    const to   = qs.to   || null;    // YYYY-MM-DD
 
-    // ===== KPIs =====
-    const benef   = await q(conn, `
+    // ===== Filtros para series =====
+    const rAP = range('fechaAplicacion', from, to);
+    const rAP2 = range('ap.fechaAplicacion', from, to);
+    const rBen = range('fechaRegistro', from, to);
+    const rPromFrom = range('validFrom', from, to);
+
+    // ===== KPIs (todas safe) =====
+    const benef = await runSafe(conn, `
       SELECT
         (SELECT COUNT(*) FROM \`Beneficiario\`) AS total,
         (SELECT COUNT(*) FROM \`Beneficiario\` WHERE fechaRegistro >= NOW() - INTERVAL 30 DAY) AS nuevos30d
     `);
-    const comer   = await q(conn, `
-      SELECT COUNT(*) AS total, SUM(activo=1) AS activos, SUM(activo=0) AS inactivos
+    const comer = await runSafe(conn, `
+      SELECT COUNT(*) AS total,
+             SUM(activo=1) AS activos,
+             SUM(activo=0) AS inactivos
       FROM \`Establecimiento\`
     `);
-    const suc     = await q(conn, `SELECT COUNT(*) AS total FROM \`Sucursal\``);
-    const promos  = await q(conn, `
+    const sucAct = await runSafe(conn, `SELECT SUM(activo=1) AS activas FROM \`Sucursal\``);
+    const promos = await runSafe(conn, `
       SELECT
         COUNT(*) AS total,
         SUM(status='APPROVED') AS aprobadas,
@@ -62,64 +68,71 @@ exports.handler = async (event) => {
         ) AS vigentesHoy
       FROM \`Promocion\`
     `);
-    const apps    = await q(conn, `
+    const apps = await runSafe(conn, `
       SELECT COUNT(*) AS totalUsos,
              SUM(fechaAplicacion >= NOW() - INTERVAL 30 DAY) AS usos30d
       FROM \`AplicacionPromocion\`
     `);
-    const activ   = await q(conn, `
+    const activ = await runSafe(conn, `
       SELECT
         (SELECT COUNT(*) FROM \`Beneficiario\`) AS total,
         (SELECT COUNT(DISTINCT idBeneficiario) FROM \`AplicacionPromocion\`) AS activos
     `);
-    const moderQ  = await runSafe(conn, `
+    const moderNow = await runSafe(conn, `
       SELECT 
         ROUND(AVG(TIMESTAMPDIFF(MINUTE, created_at, reviewedAt)),1) AS sla_media_min,
         MAX(TIMESTAMPDIFF(MINUTE, created_at, reviewedAt))         AS sla_max_min,
         SUM(status='PENDING')                                      AS pendientes
       FROM \`ModeracionQueue\`
     `);
+
     const kpis = {
-      beneficiarios: { total: benef[0]?.total ?? 0, nuevos30d: benef[0]?.nuevos30d ?? 0 },
-      comercios:     { total: comer[0]?.total ?? 0, activos: comer[0]?.activos ?? 0, inactivos: comer[0]?.inactivos ?? 0, sucursales: suc[0]?.total ?? 0 },
-      promociones:   { total: promos[0]?.total ?? 0, aprobadas: promos[0]?.aprobadas ?? 0, vigentesHoy: promos[0]?.vigentesHoy ?? 0 },
-      aplicaciones:  { totalUsos: apps[0]?.totalUsos ?? 0, usos30d: apps[0]?.usos30d ?? 0 },
-      activacion:    {
+      beneficiarios: {
+        total: benef[0]?.total ?? 0,
+        nuevos30d: benef[0]?.nuevos30d ?? 0,
+      },
+      comercios: {
+        total: comer[0]?.total ?? 0,
+        activos: comer[0]?.activos ?? 0,
+        inactivos: comer[0]?.inactivos ?? 0,
+        sucursalesActivas: sucAct[0]?.activas ?? 0,
+      },
+      promociones: {
+        total: promos[0]?.total ?? 0,
+        aprobadas: promos[0]?.aprobadas ?? 0,
+        vigentes: promos[0]?.vigentesHoy ?? 0,
+      },
+      aplicaciones: {
+        totalUsos: apps[0]?.totalUsos ?? 0,
+        usos30d: apps[0]?.usos30d ?? 0,
+      },
+      activacion: {
         total: activ[0]?.total ?? 0,
         activos: activ[0]?.activos ?? 0,
-        tasa: (activ[0]?.total ? (100 * (activ[0]?.activos || 0) / activ[0]?.total) : 0)
-      }
+        tasa: (activ[0]?.total ? (100 * (activ[0]?.activos || 0) / activ[0]?.total) : 0),
+      },
+      slaModeracion: (moderNow[0] || {}),
     };
 
-    // ===== Series =====
-    const r1 = range('fechaAplicacion', from, to);
-    const r2 = range('ap.fechaAplicacion', from, to);
-    const rB = range('fechaRegistro', from, to);
-    const rP = range('p.validFrom', from, to);
+    // ===== SERIES (las que ya tenías, con nombres que usa tu front) =====
+    const aplicacionesPorMes = await runSafe(conn, `
+      SELECT DATE_FORMAT(fechaAplicacion,'%Y-%m') AS ym, COUNT(*) AS aplicaciones
+      FROM \`AplicacionPromocion\` WHERE 1=1 ${rAP.where}
+      GROUP BY ym ORDER BY ym ASC
+    `, rAP.params);
 
-    // 1) Usos por mes
-    const usosPorMes = await runSafe(conn, `
-      SELECT DATE_FORMAT(fechaAplicacion,'%Y-%m') AS mes, COUNT(*) AS usos
-      FROM \`AplicacionPromocion\`
-      WHERE 1=1 ${r1.where}
-      GROUP BY mes
-      ORDER BY mes ASC
-    `, r1.params);
-
-    // 2) Top establecimientos (por usos)
     const topEstablecimientos = await runSafe(conn, `
-      SELECT e.idEstablecimiento, e.nombre, COUNT(*) AS usos
+      SELECT e.idEstablecimiento, e.nombre, COUNT(*) AS aplicaciones
       FROM \`AplicacionPromocion\` ap
       JOIN \`Sucursal\` s ON s.idSucursal = ap.idSucursal
       JOIN \`Establecimiento\` e ON e.idEstablecimiento = s.idEstablecimiento
-      WHERE 1=1 ${r2.where}
+      WHERE 1=1 ${rAP2.where}
       GROUP BY e.idEstablecimiento, e.nombre
-      ORDER BY usos DESC
+      ORDER BY aplicaciones DESC
       LIMIT 10
-    `, r2.params);
+    `, rAP2.params);
 
-    // 3) Cobertura por categoría (establecimientos)
-    const topCategoriasEstab = await runSafe(conn, `
+    const topCategorias = await runSafe(conn, `
       SELECT c.nombre AS categoria, COUNT(*) AS establecimientos
       FROM \`CategoriaEstablecimiento\` ce
       JOIN \`Categoria\` c ON c.idCategoria = ce.idCategoria
@@ -128,81 +141,49 @@ exports.handler = async (event) => {
       LIMIT 10
     `);
 
-    // 4) Pie: redenciones por categoría de cupón
-    const redencionesPorCat = await runSafe(conn, `
-      SELECT COALESCE(cc.nombre,'(sin categoría)') AS categoria, SUM(p.redeemedCount) AS redenciones
-      FROM \`Promocion\` p
-      LEFT JOIN \`CategoriaCupon\` cc ON cc.idCategoriaCupon = p.idCategoriaCupon
-      WHERE 1=1 ${rP.where}
-      GROUP BY categoria
-      ORDER BY redenciones DESC
-    `, rP.params);
-
-    // 5) Heatmap 24×7: usos por hora × día
-    const usosPorHora = await runSafe(conn, `
-      SELECT DAYOFWEEK(fechaAplicacion) AS dow, HOUR(fechaAplicacion) AS hora, COUNT(*) AS usos
-      FROM \`AplicacionPromocion\`
-      WHERE 1=1 ${r1.where}
-      GROUP BY dow, hora
-      ORDER BY dow, hora
-    `, r1.params);
-
-    // 6) Crecimiento de beneficiarios
-    const crecimientoBeneficiarios = await runSafe(conn, `
-      SELECT DATE_FORMAT(fechaRegistro,'%Y-%m') AS mes, COUNT(*) AS nuevos
-      FROM \`Beneficiario\`
-      WHERE 1=1 ${rB.where}
-      GROUP BY mes
-      ORDER BY mes ASC
-    `, rB.params);
-
-    // 7) Activación por mes (registrados vs activados)
-    const activacionPorMes = await runSafe(conn, `
-      WITH bm AS (
-        SELECT DATE_FORMAT(fechaRegistro,'%Y-%m') AS mes, idBeneficiario
-        FROM \`Beneficiario\`
-        WHERE 1=1 ${rB.where}
-      )
-      SELECT bm.mes,
-             COUNT(*) AS registrados,
-             COUNT(DISTINCT ap.idBeneficiario) AS activados
-      FROM bm
-      LEFT JOIN \`AplicacionPromocion\` ap ON ap.idBeneficiario = bm.idBeneficiario
-      GROUP BY bm.mes
-      ORDER BY bm.mes ASC
-    `, rB.params);
-
-    // 8) Usos por día de la semana
-    const usosPorDiaSemana = await runSafe(conn, `
-      SELECT DAYNAME(fechaAplicacion) AS dia, COUNT(*) AS usos
-      FROM \`AplicacionPromocion\`
-      WHERE 1=1 ${r1.where}
-      GROUP BY dia
-      ORDER BY FIELD(dia,'Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')
-    `, r1.params);
-
-    // 9) Estado catálogo de promos (stacked sinLimite/conLimite)
-    const promosStatus = await runSafe(conn, `
-      SELECT status,
-             SUM(unlimited=1) AS sinLimite,
-             SUM(unlimited=0) AS conLimite,
-             COUNT(*)         AS total
-      FROM \`Promocion\`
-      GROUP BY status
-      ORDER BY total DESC
-    `);
-
-    // 10) Redenciones por mes (APPROVED)
     const redencionesPorMes = await runSafe(conn, `
       SELECT DATE_FORMAT(validFrom,'%Y-%m') AS mes, SUM(redeemedCount) AS redenciones
       FROM \`Promocion\`
       WHERE status='APPROVED' AND validFrom IS NOT NULL
       ${from ? ' AND validFrom >= ?' : ''} ${to ? ' AND validFrom < ?' : ''}
-      GROUP BY mes
-      ORDER BY mes ASC
+      GROUP BY mes ORDER BY mes ASC
     `, [ ...(from?[from]:[]), ...(to?[to]:[]) ]);
 
-    // Tabla: Top Dueños
+    const usosPorHora = await runSafe(conn, `
+      SELECT DAYOFWEEK(fechaAplicacion) AS dow, HOUR(fechaAplicacion) AS hora, COUNT(*) AS usos
+      FROM \`AplicacionPromocion\` WHERE 1=1 ${rAP.where}
+      GROUP BY dow, hora ORDER BY dow, hora
+    `, rAP.params);
+
+    const usosPorDiaSemana = await runSafe(conn, `
+      SELECT DAYNAME(fechaAplicacion) AS dia, COUNT(*) AS usos
+      FROM \`AplicacionPromocion\` WHERE 1=1 ${rAP.where}
+      GROUP BY dia
+      ORDER BY FIELD(dia,'Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday')
+    `, rAP.params);
+
+    const crecimientoBeneficiarios = await runSafe(conn, `
+      SELECT DATE_FORMAT(fechaRegistro,'%Y-%m') AS mes, COUNT(*) AS nuevos
+      FROM \`Beneficiario\` WHERE 1=1 ${rBen.where}
+      GROUP BY mes ORDER BY mes ASC
+    `, rBen.params);
+
+    const activacionPorMes = await runSafe(conn, `
+      WITH bm AS (
+        SELECT DATE_FORMAT(fechaRegistro,'%Y-%m') AS mes, idBeneficiario
+        FROM \`Beneficiario\` WHERE 1=1 ${rBen.where}
+      )
+      SELECT bm.mes, COUNT(*) AS registrados, COUNT(DISTINCT ap.idBeneficiario) AS activados
+      FROM bm
+      LEFT JOIN \`AplicacionPromocion\` ap ON ap.idBeneficiario = bm.idBeneficiario
+      GROUP BY bm.mes ORDER BY bm.mes ASC
+    `, rBen.params);
+
+    const promosStatus = await runSafe(conn, `
+      SELECT status, SUM(unlimited=1) AS sinLimite, SUM(unlimited=0) AS conLimite, COUNT(*) AS total
+      FROM \`Promocion\` GROUP BY status ORDER BY total DESC
+    `);
+
     const topDuenos = await runSafe(conn, `
       SELECT d.idDueno, d.nombreUsuario, d.email,
              COUNT(DISTINCT e.idEstablecimiento) AS establecimientos,
@@ -213,38 +194,94 @@ exports.handler = async (event) => {
       LEFT JOIN \`Establecimiento\` e       ON e.idEstablecimiento = de.idEstablecimiento
       LEFT JOIN \`Sucursal\` s              ON s.idEstablecimiento = e.idEstablecimiento
       LEFT JOIN \`AplicacionPromocion\` ap  ON ap.idSucursal = s.idSucursal
-      WHERE 1=1 ${r2.where}
+      WHERE 1=1 ${rAP2.where}
       GROUP BY d.idDueno, d.nombreUsuario, d.email
       ORDER BY usos DESC
       LIMIT 10
-    `, r2.params);
+    `, rAP2.params);
+
+    // ===== 🆕 EXTRAS para el dashboard =====
+
+    // 1) Embudo de conversión (registrados / ≥1 uso / ≥3 usos) por mes de registro
+    const embudoConversion = await runSafe(conn, `
+      WITH ben AS (
+        SELECT idBeneficiario, DATE_FORMAT(fechaRegistro,'%Y-%m') AS cohort
+        FROM \`Beneficiario\` WHERE 1=1 ${rBen.where}
+      ),
+      use_counts AS (
+        SELECT idBeneficiario, COUNT(*) AS usos
+        FROM \`AplicacionPromocion\` GROUP BY idBeneficiario
+      )
+      SELECT cohort,
+             COUNT(*) AS registrados,
+             SUM(CASE WHEN usos >= 1 THEN 1 ELSE 0 END) AS activados_1p,
+             SUM(CASE WHEN usos >= 3 THEN 1 ELSE 0 END) AS frecuentes_3p
+      FROM ben
+      LEFT JOIN use_counts USING(idBeneficiario)
+      GROUP BY cohort
+      ORDER BY cohort
+    `, rBen.params);
+
+    // 2) Tendencia de SLA de moderación (por día)
+    const slaModeracionTrend = await runSafe(conn, `
+      SELECT DATE(created_at) AS fecha,
+             ROUND(AVG(TIMESTAMPDIFF(MINUTE, created_at, reviewedAt)),1) AS sla_media_min,
+             SUM(status='PENDING') AS pendientes
+      FROM \`ModeracionQueue\`
+      GROUP BY DATE(created_at)
+      ORDER BY fecha
+    `);
+
+    // 3) Lifecycle del catálogo por mes
+    const catalogoLifecycle = await runSafe(conn, `
+      SELECT DATE_FORMAT(fechaRegistro,'%Y-%m') AS mes,
+             SUM(status='APPROVED') AS aprobadas,
+             SUM(status='PENDING')  AS pendientes,
+             SUM(status='PAUSED')   AS pausadas,
+             COUNT(*)               AS total
+      FROM \`Promocion\`
+      GROUP BY mes
+      ORDER BY mes
+    `);
+
+    // 4) Cobertura geográfica (vista existente)
+    const geoCobertura = await runSafe(conn, `
+      SELECT cell_lat, cell_lng, branches, coupons, redemptions
+      FROM \`v_geo_grid\`
+    `);
 
     // Auditoría (últimos eventos)
     const auditoria = await runSafe(conn, `
       SELECT id, created_at, actorUser, actorRole, action, entityType, entityId
-      FROM \`AuditEvents\`
-      ORDER BY created_at DESC
-      LIMIT 15
+      FROM \`AuditEvents\` ORDER BY created_at DESC LIMIT 15
     `);
 
+    // ===== Payload final =====
     const data = {
       kpis,
       series: {
-        usosPorMes,
+        aplicacionesPorMes,
+        redencionesPorMes,
         topEstablecimientos,
-        topCategoriasEstab,
-        redencionesPorCat,
+        topCategorias,
         usosPorHora,
+        usosPorDiaSemana,
         crecimientoBeneficiarios,
         activacionPorMes,
-        usosPorDiaSemana,
         promosStatus,
-        redencionesPorMes,
         topDuenos,
-        slaModeracion: (moderQ[0] || {})
+
+        // 🆕 extras:
+        embudoConversion,
+        slaModeracionTrend,
+        catalogoLifecycle,
+        geoCobertura,
+
+        // snapshot SLA actual (útil como KPI o chip)
+        slaModeracion: kpis.slaModeracion,
       },
       auditoria,
-      filters: { from, to }
+      filters: { from, to },
     };
 
     return json(200, { success: true, data });
