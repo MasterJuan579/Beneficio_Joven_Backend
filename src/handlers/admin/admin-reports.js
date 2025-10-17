@@ -1,7 +1,7 @@
 // src/handlers/admin/admin-reports.js
 require('dotenv').config();
-const { getConnection } = require('../../src/config/database');
-const { verifyRole } = require('../../src/middleware/auth');
+const { getConnection } = require('../../config/database');
+const { verifyRole } = require('../../middleware/auth');
 
 const json = (statusCode, body) => ({
   statusCode,

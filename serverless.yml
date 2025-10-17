@@ -10,6 +10,9 @@ provider:
     DB_PASSWORD: ${env:DB_PASSWORD}
     DB_NAME: ${env:DB_NAME}
     JWT_SECRET: ${env:JWT_SECRET}
+  deploymentBucket:
+    name: serverless-framework-deployments-us-east-2-ec22b131-f549
+
 
 plugins:
   - serverless-offline
@@ -17,7 +20,7 @@ plugins:
 functions:
   test:
     handler: src/handlers/test.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: test
@@ -26,7 +29,7 @@ functions:
   
   login:
     handler: src/handlers/auth/login.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: auth/login
@@ -35,7 +38,7 @@ functions:
   
   registerBeneficiario:
     handler: src/handlers/auth/register.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: auth/register/beneficiario
@@ -44,7 +47,7 @@ functions:
   
   registerDueno:
     handler: src/handlers/auth/register-dueno.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: auth/register/dueno
@@ -53,7 +56,7 @@ functions:
   
   registerAdmin:
     handler: src/handlers/auth/register-admin.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: auth/register/admin
@@ -62,7 +65,7 @@ functions:
   
   dashboardStats:
     handler: src/handlers/admin/dashboard-stats.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: admin/dashboard/stats
@@ -70,17 +73,17 @@ functions:
           cors: true
 
   listSucursales:
-    handler: src/handlers/admin/list-sucursales.handler
-    timeout: 30
+    handler: src/handlers/common/list-sucursales.handler
+    timeout: 29
     events:
       - http:
-          path: admin/get/sucursales
+          path: common/get/sucursales
           method: get
           cors: true
         
   listDuenos:
     handler: src/handlers/admin/list-duenos.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: admin/duenos
@@ -89,7 +92,7 @@ functions:
 
   listEstablecimientos:
     handler: src/handlers/common/list-establecimientos.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: admin/establecimiento
@@ -98,7 +101,7 @@ functions:
   
   toggleDuenoStatus:
     handler: src/handlers/admin/toggle-dueno-status.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: admin/duenos/{id}/toggle-status
@@ -107,7 +110,7 @@ functions:
   
   updateDueno:
     handler: src/handlers/admin/update-dueno.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: admin/duenos/{id}
@@ -116,7 +119,7 @@ functions:
 
   toggleEstablecimientoStatus:
     handler: src/handlers/admin/toggle-establecimiento-status.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: admin/sucursales/{id}/toggle-status
@@ -125,7 +128,7 @@ functions:
   
   adminReports:
     handler: src/handlers/admin/admin-reports.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: admin/reports
@@ -134,7 +137,7 @@ functions:
 
   uploadLogo:
     handler: src/handlers/upload/upload-image.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: upload-image
@@ -142,7 +145,7 @@ functions:
           cors: true
   createEstablecimiento:
     handler: src/handlers/admin/create-establecimiento.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: admin/establecimiento
@@ -151,7 +154,7 @@ functions:
   
   updateEstablecimiento:
     handler: src/handlers/common/update-establecimiento.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: common/establecimiento/{id}
@@ -160,7 +163,7 @@ functions:
   
   createSucursal:
     handler: src/handlers/admin/create-sucursal.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: admin/post/sucursales
@@ -169,21 +172,13 @@ functions:
   
   listCategorias:
     handler: src/handlers/common/list-categorias.handler
-    timeout: 30
+    timeout: 29
     events:
       - http:
           path: common/categorias
           method: get
           cors: true
 
-  adminReports:
-    handler: src/handlers/admin/admin-reports.handler
-    timeout: 30
-    events:
-      - http:
-          path: admin/reports
-          method: get
-          cors: true
 
   
 

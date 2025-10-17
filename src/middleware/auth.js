@@ -36,7 +36,7 @@ const verifyToken = (event) => {
     return {
       id: decoded.id,
       email: decoded.email,
-      folio: decoded.folio || null, // ← CAMBIO: folio es opcional
+      folio: decoded.folio || null,
       role: decoded.role
     };
     

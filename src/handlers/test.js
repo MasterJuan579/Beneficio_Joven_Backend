@@ -43,7 +43,7 @@ exports.handler = async (event) => {
     };
     
   } catch (error) {
-    console.error('Error de conexión:', error);
+    console.error('Error de conexión testeo:', error);
     return {
       statusCode: 500,
       headers,
