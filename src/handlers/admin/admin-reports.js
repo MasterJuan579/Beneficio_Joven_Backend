@@ -29,14 +29,41 @@ function range(col, from, to) {
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') return json(200, { ok: true });
 
+  // ⚠️ NO cerrar el pool en finally. getConnection() devuelve el pool reutilizable.
   let conn;
   try {
     verifyRole(event, ['administrador']);
-    conn = await getConnection();
+    conn = await getConnection(); // <- es el pool
 
     const qs = event.queryStringParameters || {};
     const from = qs.from || null;    // YYYY-MM-DD
     const to   = qs.to   || null;    // YYYY-MM-DD
+    const dbg  = qs.debug === '1';   // debug opcional
+
+    // ===== DEBUG opcional =====
+    let whereAmI = [];
+    let tableCounts = [];
+    if (dbg) {
+      try {
+        whereAmI = await q(conn, `
+          SELECT DATABASE() AS db, @@hostname AS host, @@port AS port, @@version AS version, NOW() AS now;
+        `);
+      } catch (e) {
+        whereAmI = [{ error: e?.message || String(e) }];
+      }
+      try {
+        tableCounts = await q(conn, `
+          SELECT 'Beneficiario' t, COUNT(*) c FROM Beneficiario
+          UNION ALL SELECT 'AplicacionPromocion', COUNT(*) FROM AplicacionPromocion
+          UNION ALL SELECT 'Promocion', COUNT(*) FROM Promocion
+          UNION ALL SELECT 'Sucursal', COUNT(*) FROM Sucursal
+          UNION ALL SELECT 'Establecimiento', COUNT(*) FROM Establecimiento
+          UNION ALL SELECT 'ModeracionQueue', COUNT(*) FROM ModeracionQueue
+        `);
+      } catch (e) {
+        tableCounts = [{ error: e?.message || String(e) }];
+      }
+    }
 
     // ===== Filtros para series =====
     const rAP = range('fechaAplicacion', from, to);
@@ -114,7 +141,7 @@ exports.handler = async (event) => {
       slaModeracion: (moderNow[0] || {}),
     };
 
-    // ===== SERIES (las que ya tenías, con nombres que usa tu front) =====
+    // ===== SERIES =====
     const aplicacionesPorMes = await runSafe(conn, `
       SELECT DATE_FORMAT(fechaAplicacion,'%Y-%m') AS ym, COUNT(*) AS aplicaciones
       FROM \`AplicacionPromocion\` WHERE 1=1 ${rAP.where}
@@ -200,9 +227,7 @@ exports.handler = async (event) => {
       LIMIT 10
     `, rAP2.params);
 
-    // ===== 🆕 EXTRAS para el dashboard =====
-
-    // 1) Embudo de conversión (registrados / ≥1 uso / ≥3 usos) por mes de registro
+    // ===== 🆕 EXTRAS =====
     const embudoConversion = await runSafe(conn, `
       WITH ben AS (
         SELECT idBeneficiario, DATE_FORMAT(fechaRegistro,'%Y-%m') AS cohort
@@ -222,7 +247,6 @@ exports.handler = async (event) => {
       ORDER BY cohort
     `, rBen.params);
 
-    // 2) Tendencia de SLA de moderación (por día)
     const slaModeracionTrend = await runSafe(conn, `
       SELECT DATE(created_at) AS fecha,
              ROUND(AVG(TIMESTAMPDIFF(MINUTE, created_at, reviewedAt)),1) AS sla_media_min,
@@ -232,7 +256,6 @@ exports.handler = async (event) => {
       ORDER BY fecha
     `);
 
-    // 3) Lifecycle del catálogo por mes
     const catalogoLifecycle = await runSafe(conn, `
       SELECT DATE_FORMAT(fechaRegistro,'%Y-%m') AS mes,
              SUM(status='APPROVED') AS aprobadas,
@@ -244,20 +267,18 @@ exports.handler = async (event) => {
       ORDER BY mes
     `);
 
-    // 4) Cobertura geográfica (vista existente)
     const geoCobertura = await runSafe(conn, `
       SELECT cell_lat, cell_lng, branches, coupons, redemptions
       FROM \`v_geo_grid\`
     `);
 
-    // Auditoría (últimos eventos)
     const auditoria = await runSafe(conn, `
       SELECT id, created_at, actorUser, actorRole, action, entityType, entityId
       FROM \`AuditEvents\` ORDER BY created_at DESC LIMIT 15
     `);
 
     // ===== Payload final =====
-    const data = {
+    const payload = {
       kpis,
       series: {
         aplicacionesPorMes,
@@ -271,7 +292,7 @@ exports.handler = async (event) => {
         promosStatus,
         topDuenos,
 
-        // 🆕 extras:
+        // extras
         embudoConversion,
         slaModeracionTrend,
         catalogoLifecycle,
@@ -284,7 +305,10 @@ exports.handler = async (event) => {
       filters: { from, to },
     };
 
-    return json(200, { success: true, data });
+    // Adjunta debug solo si se pidió
+    if (dbg) payload.debug = { whereAmI, tableCounts };
+
+    return json(200, { success: true, data: payload });
 
   } catch (err) {
     console.error('Admin reports error:', err);
@@ -294,6 +318,8 @@ exports.handler = async (event) => {
     }
     return json(500, { success:false, message: msg });
   } finally {
-    try { if (conn?.release) conn.release(); else if (conn?.end) await conn.end(); } catch {}
+    // 🔒 IMPORTANTE: NO cerrar el pool aquí.
+    // getConnection() devuelve el pool global reutilizable.
+    // Nada que hacer en finally.
   }
 };
