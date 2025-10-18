@@ -12,6 +12,7 @@ provider:
     JWT_SECRET: ${env:JWT_SECRET}
   deploymentBucket:
     name: serverless-framework-deployments-us-east-2-ec22b131-f549
+    
 
 
 plugins:
@@ -37,7 +38,7 @@ functions:
           cors: true
   
   registerBeneficiario:
-    handler: src/handlers/auth/register.handler
+    handler: src/handlers/auth/register-beneficiario.handler
     timeout: 29
     events:
       - http:

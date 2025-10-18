@@ -43,7 +43,7 @@ exports.handler = async (event) => {
     };
 
   } catch (error) {
-    console.error('Error obteniendo categorías:', error);
+    console.error('Error obteniendo categorías :( ): ', error);
 
     if (error.message.includes('Token') || error.message.includes('Acceso denegado')) {
       return {

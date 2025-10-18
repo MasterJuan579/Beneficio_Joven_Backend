@@ -15,61 +15,71 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Verificar que sea administrador
     const user = verifyRole(event, ['administrador', 'dueno', 'beneficiario']);
-    
-    console.log(`Admin ${user.id} solicitó lista de establecimientos`);
+    console.log(` Usuario ${user.id} solicitó lista de establecimientos`);
 
     const connection = await getConnection();
 
-    // Query simplificada usando e.nombre directamente
     const [establecimientos] = await connection.execute(`
       SELECT 
         e.idEstablecimiento,
         e.nombre AS nombreEstablecimiento,
-        GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS categoria
+        e.logoURL,
+        e.activo,
+        e.fechaRegistro,
+        GROUP_CONCAT(DISTINCT c.nombre SEPARATOR ', ') AS categoria,
+        d.idDueno,
+        d.nombreUsuario AS nombreDueno,
+        d.email AS correoDueno
       FROM Establecimiento e
       LEFT JOIN CategoriaEstablecimiento ce ON e.idEstablecimiento = ce.idEstablecimiento
       LEFT JOIN Categoria c ON ce.idCategoria = c.idCategoria
-      GROUP BY e.idEstablecimiento, e.nombre
-      ORDER BY e.fechaRegistro DESC
+      LEFT JOIN DuenoEstablecimiento de ON e.idEstablecimiento = de.idEstablecimiento
+      LEFT JOIN Dueno d ON de.idDueno = d.idDueno
+      GROUP BY e.idEstablecimiento, e.nombre, d.idDueno, d.nombreUsuario, d.email
+      ORDER BY e.fechaRegistro DESC;
     `);
 
-    // Obtener total de establecimientos
-    const [totalResult] = await connection.execute(
-      'SELECT COUNT(*) as total FROM Establecimiento'
-    );
+    const total = establecimientos.length;
 
-    // Formatear los datos
-    const data = establecimientos.map(establecimiento => ({
-      idEstablecimiento: establecimiento.idEstablecimiento,
-      nombreEstablecimiento: establecimiento.nombreEstablecimiento,
-      categoria: establecimiento.categoria || 'Sin categoría'
+    const data = establecimientos.map((e) => ({
+      idEstablecimiento: e.idEstablecimiento,
+      nombreEstablecimiento: e.nombreEstablecimiento,
+      categoria: e.categoria || 'Sin categoría',
+      logoURL: e.logoURL || null,
+      activo: !!e.activo,
+      idDueno: e.idDueno || null,
+      nombreDueno: e.nombreDueno || 'Sin asignar',
+      correoDueno: e.correoDueno || null,
+      fechaRegistro: e.fechaRegistro,
     }));
 
-    console.log(`Se encontraron ${data.length} establecimientos`);
+    console.log(`✅ Se encontraron ${data.length} establecimientos`);
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        data: data,
-        total: totalResult[0].total
-      })
+        message: 'Establecimientos obtenidos correctamente',
+        total,
+        data,
+      }),
     };
-
   } catch (error) {
-    console.error('Error obteniendo establecimientos:', error);
+    console.error('❌ Error obteniendo establecimientos:', error);
 
-    if (error.message.includes('Token') || error.message.includes('Acceso denegado')) {
+    if (
+      error.message.includes('Token') ||
+      error.message.includes('Acceso denegado')
+    ) {
       return {
         statusCode: 401,
         headers,
         body: JSON.stringify({
           success: false,
-          message: error.message
-        })
+          message: error.message,
+        }),
       };
     }
 
@@ -79,8 +89,8 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         success: false,
         message: 'Error al obtener establecimientos',
-        error: error.message
-      })
+        error: error.message,
+      }),
     };
   }
 };

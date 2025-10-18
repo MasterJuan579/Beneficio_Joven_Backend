@@ -480,6 +480,9 @@ region = us-east-2
 ```
 
 
+
+
+
 **Verificar:**
 ```bash
 cat $HOME\.aws\credentials
