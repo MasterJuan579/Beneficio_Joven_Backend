@@ -3,7 +3,7 @@ const { getConnection } = require('../../config/database');
 const { verifyRole } = require('../../middleware/auth');
 const Joi = require('joi');
 
-// Validación: una sola categoría
+//  Esquema de validación con dueño incluido
 const createEstablecimientoSchema = Joi.object({
   nombre: Joi.string().min(3).max(100).required().messages({
     'string.min': 'El nombre debe tener al menos 3 caracteres',
@@ -16,6 +16,10 @@ const createEstablecimientoSchema = Joi.object({
   idCategoria: Joi.number().integer().required().messages({
     'number.base': 'La categoría debe ser un número válido',
     'any.required': 'La categoría es requerida'
+  }),
+  idDueno: Joi.number().integer().required().messages({
+    'number.base': 'El dueño debe ser un número válido',
+    'any.required': 'El dueño es requerido'
   })
 });
 
@@ -28,16 +32,17 @@ exports.handler = async (event) => {
     'Access-Control-Allow-Credentials': 'true'
   };
 
+  //  Manejo de preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
 
   try {
-    //Verificar que el usuario sea administrador
+    //  Solo administradores pueden crear establecimientos
     const user = verifyRole(event, ['administrador']);
-    console.log(`🧩 Admin ${user.id} solicita crear establecimiento`);
+    console.log(` Admin ${user.id} solicita crear establecimiento`);
 
-    // Validar el cuerpo del request
+    // Parsear y validar body
     const body = JSON.parse(event.body);
     const { error, value } = createEstablecimientoSchema.validate(body);
 
@@ -48,14 +53,14 @@ exports.handler = async (event) => {
         body: JSON.stringify({
           success: false,
           message: 'Datos inválidos',
-          errors: error.details.map(d => d.message)
+          errors: error.details.map((d) => d.message)
         })
       };
     }
 
     const connection = await getConnection();
 
-    //Verificar si ya existe un establecimiento con ese nombre
+    // Verificar si ya existe un establecimiento con ese nombre
     const [existe] = await connection.execute(
       'SELECT idEstablecimiento FROM Establecimiento WHERE nombre = ? LIMIT 1',
       [value.nombre.trim()]
@@ -89,22 +94,56 @@ exports.handler = async (event) => {
       };
     }
 
-    //Insertar el nuevo establecimiento (activo por defecto)
+    // Verificar que el dueño exista y esté activo
+    const [dueno] = await connection.execute(
+      'SELECT idDueno, nombreUsuario, activo FROM Dueno WHERE idDueno = ?',
+      [value.idDueno]
+    );
+
+    if (dueno.length === 0) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          message: 'El dueño especificado no existe'
+        })
+      };
+    }
+
+    if (!dueno[0].activo) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          message: 'El dueño especificado está inactivo'
+        })
+      };
+    }
+
+    // Insertar el nuevo establecimiento (activo por defecto)
     const [result] = await connection.execute(
-      'INSERT INTO Establecimiento (nombre, logoURL, activo) VALUES (?, ?, 1)',
+      'INSERT INTO Establecimiento (nombre, logoURL, activo, fechaRegistro) VALUES (?, ?, 1, NOW())',
       [value.nombre.trim(), value.logoURL || null]
     );
 
     const idEstablecimiento = result.insertId;
     console.log(`🏗️ Establecimiento creado con ID: ${idEstablecimiento}`);
 
-    // Insertar la relación con la categoría (1:1 lógico)
+    //  Relacionar categoría
     await connection.execute(
       'INSERT INTO CategoriaEstablecimiento (idEstablecimiento, idCategoria) VALUES (?, ?)',
       [idEstablecimiento, value.idCategoria]
     );
 
-    // Obtener el registro recién creado para devolverlo al cliente
+    //  Relacionar con el dueño
+    await connection.execute(
+      'INSERT INTO DuenoEstablecimiento (idDueno, idEstablecimiento, fechaRegistro) VALUES (?, ?, NOW())',
+      [value.idDueno, idEstablecimiento]
+    );
+    
+    //  Consultar el registro completo recién creado
     const [establecimiento] = await connection.execute(`
       SELECT 
         e.idEstablecimiento,
@@ -112,10 +151,14 @@ exports.handler = async (event) => {
         e.logoURL,
         e.activo,
         e.fechaRegistro,
-        c.nombre AS categoria
+        c.nombre AS categoria,
+        d.idDueno,
+        d.nombreUsuario AS nombreDueno
       FROM Establecimiento e
       LEFT JOIN CategoriaEstablecimiento ce ON e.idEstablecimiento = ce.idEstablecimiento
       LEFT JOIN Categoria c ON ce.idCategoria = c.idCategoria
+      LEFT JOIN DuenoEstablecimiento de ON e.idEstablecimiento = de.idEstablecimiento
+      LEFT JOIN Dueno d ON de.idDueno = d.idDueno
       WHERE e.idEstablecimiento = ?
     `, [idEstablecimiento]);
 
@@ -127,40 +170,28 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         success: true,
         message: 'Establecimiento creado exitosamente',
-        data: {
-          idEstablecimiento: establecimiento[0].idEstablecimiento,
-          nombre: establecimiento[0].nombre,
-          logoURL: establecimiento[0].logoURL,
-          categoria: establecimiento[0].categoria,
-          activo: establecimiento[0].activo,
-          fechaRegistro: establecimiento[0].fechaRegistro
-        }
+        data: establecimiento[0]
       })
     };
 
   } catch (error) {
-    console.error('❌ Error creando establecimiento:', error);
+    console.error('Error creando establecimiento:', error);
 
-    //  Manejo de errores comunes
     if (error.message.includes('Token') || error.message.includes('Acceso denegado')) {
       return {
         statusCode: 401,
         headers,
-        body: JSON.stringify({
-          success: false,
-          message: error.message
-        })
+        body: JSON.stringify({ success: false, message: error.message })
       };
     }
 
-    // Si la base lanza error por UNIQUE (por seguridad)
     if (error.code === 'ER_DUP_ENTRY') {
       return {
         statusCode: 400,
         headers,
         body: JSON.stringify({
           success: false,
-          message: 'Ya existe un establecimiento con ese nombre (restricción única en la base de datos).'
+          message: 'Ya existe un establecimiento con ese nombre (restricción única).'
         })
       };
     }
