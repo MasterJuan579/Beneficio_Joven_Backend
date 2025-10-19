@@ -71,7 +71,7 @@ exports.handler = async (event) => {
             try {
               return s.imagenes ? JSON.parse(s.imagenes) : [];
             } catch (err) {
-              console.warn(`⚠️ Imagenes inválidas para sucursal ${s.idSucursal}:`, s.imagenes);
+              console.warn(`Imagenes inválidas para sucursal ${s.idSucursal}:`, s.imagenes);
               return [];
             }
           })(),

@@ -12,13 +12,14 @@ provider:
     JWT_SECRET: ${env:JWT_SECRET}
   deploymentBucket:
     name: serverless-framework-deployments-us-east-2-ec22b131-f549
-    
+
 
 
 plugins:
   - serverless-offline
 
 functions:
+
   test:
     handler: src/handlers/test.handler
     timeout: 29
