@@ -203,7 +203,7 @@ functions:
           cors: true
 
   adminModeracionQueue:
-    handler: src/handlers/admin/admin-moderacion.queue
+    handler: src/handlers/admin/admin-moderacion.queue.handler
     timeout: 29
     events:
       - http:
@@ -212,7 +212,7 @@ functions:
           cors: true
 
   adminModeracionRules:
-    handler: src/handlers/admin/admin-moderacion.rules
+    handler: src/handlers/admin/admin-moderacion.rules.handler  
     timeout: 29
     events:
       - http:
@@ -238,7 +238,32 @@ functions:
           method: get
           cors: true
 
+  toggleBeneficiarioStatus:
+    handler: src/handlers/admin/toggle-beneficiario-status.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/beneficiarios/{id}/toggle-status
+          method: patch
+          cors: true
+  
+  createBeneficiario:
+    handler: src/handlers/admin/create-beneficiario.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/beneficiarios
+          method: post
+          cors: true
 
+  importBeneficiarios:
+    handler: src/handlers/admin/import-beneficiarios.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/beneficiarios/import
+          method: post
+          cors: true
 
   
 

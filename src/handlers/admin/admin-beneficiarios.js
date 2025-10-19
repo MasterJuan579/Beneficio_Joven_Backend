@@ -14,10 +14,9 @@ const json = (statusCode, body) => ({
   body: JSON.stringify(body),
 });
 
-async function q(conn, sql, params = []) { const [rows] = await conn.query(sql, params); return rows; }
-async function runSafe(conn, sql, params = []) {
-  try { return await q(conn, sql, params); }
-  catch (e) { console.error('SQL error:', e?.code, e?.message, '\nSQL:', sql); return []; }
+async function q(conn, sql, params = []) {
+  const [rows] = await conn.query(sql, params);
+  return rows;
 }
 
 exports.handler = async (event) => {
@@ -25,53 +24,81 @@ exports.handler = async (event) => {
 
   let conn;
   try {
-    // ADMIN o MODERADOR pueden leer
-    verifyRole(event, ['administrador','moderador']);
+    // Solo admins
+    verifyRole(event, ['administrador']);
     conn = await getConnection();
 
     const qs = event.queryStringParameters || {};
-    const page = Math.max(1, parseInt(qs.page || '1', 10));
-    const pageSize = Math.min(100, Math.max(1, parseInt(qs.pageSize || '20', 10)));
-    const offset = (page - 1) * pageSize;
-    const query = (qs.query || '').trim();
+    const search = (qs.query || '').trim();
+    const showInactive = qs.showInactive === '1' || qs.showInactive === 'true';
+    const limit = Math.min(parseInt(qs.limit || '200', 10), 500);
+    const offset = Math.max(parseInt(qs.offset || '0', 10), 0);
+    const sort = (qs.sort || 'fechaRegistro').toString();
+    const dir = (qs.dir || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
-    // Búsqueda básica por nombre, CURP, email, folio
+    // Campos permitidos para sort (white-list)
+    const sortMap = {
+      fechaRegistro: '`fechaRegistro`',
+      primerNombre: '`primerNombre`',
+      apellidoPaterno: '`apellidoPaterno`',
+      email: '`email`',
+      curp: '`curp`',
+      folio: '`folio`',
+      activo: '`activo`'
+    };
+    const orderBy = sortMap[sort] || '`fechaRegistro`';
+
     const where = [];
     const params = [];
 
-    if (query) {
-      const like = `%${query}%`;
-      where.push(`(primerNombre LIKE ? OR segundoNombre LIKE ? OR apellidoPaterno LIKE ? OR apellidoMaterno LIKE ? OR curp LIKE ? OR email LIKE ? OR folio LIKE ?)`);
+    if (!showInactive) {
+      where.push('b.activo = 1');
+    }
+    if (search) {
+      const like = `%${search}%`;
+      where.push(`(
+        b.primerNombre LIKE ? OR
+        b.segundoNombre LIKE ? OR
+        b.apellidoPaterno LIKE ? OR
+        b.apellidoMaterno LIKE ? OR
+        b.email LIKE ? OR
+        b.curp LIKE ? OR
+        b.folio LIKE ?
+      )`);
       params.push(like, like, like, like, like, like, like);
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
-    const totalRows = await runSafe(conn, `
-      SELECT COUNT(*) AS total
-      FROM \`Beneficiario\`
+    const data = await q(conn, `
+      SELECT
+        b.idBeneficiario,
+        b.primerNombre,
+        b.segundoNombre,
+        b.apellidoPaterno,
+        b.apellidoMaterno,
+        b.curp,
+        b.email,
+        b.folio,
+        b.fechaRegistro,
+        b.activo
+      FROM \`Beneficiario\` b
+      ${whereSql}
+      ORDER BY ${orderBy} ${dir}
+      LIMIT ? OFFSET ?
+    `, [...params, limit, offset]);
+
+    const [{ total }] = await q(conn, `
+      SELECT COUNT(*) AS total FROM \`Beneficiario\` b
       ${whereSql}
     `, params);
 
-    const rows = await runSafe(conn, `
-      SELECT idBeneficiario, curp, primerNombre, segundoNombre, apellidoPaterno, apellidoMaterno,
-             fechaNacimiento, celular, folio, email, fechaRegistro, sexo, activo
-      FROM \`Beneficiario\`
-      ${whereSql}
-      ORDER BY fechaRegistro DESC, idBeneficiario DESC
-      LIMIT ? OFFSET ?
-    `, [...params, pageSize, offset]);
-
-    return json(200, {
-      success: true,
-      data: rows,
-      meta: { page, pageSize, total: totalRows[0]?.total ?? 0 }
-    });
+    return json(200, { success: true, data, total, limit, offset });
 
   } catch (err) {
     console.error('admin-beneficiarios error:', err);
     const msg = err?.message || 'Error listando beneficiarios';
-    if (/Token|Acceso denegado/i.test(msg)) return json(401, { success:false, message: msg });
-    return json(500, { success:false, message: msg });
+    const code = String(msg).includes('Token') ? 401 : 500;
+    return json(code, { success: false, message: msg });
   }
 };
