@@ -181,6 +181,28 @@ functions:
           method: get
           cors: true
 
+    listCategoriasMobile:
+    handler: src/handlers/mobile/list-categorias.handler
+    timeout: 29
+    events:
+      - http:
+          path: mobile/categorias
+          method: get
+          cors: true
+
+
+    mobileListEstablecimientos:
+    handler: src/handlers/mobile/list-establecimientos.handler
+    timeout: 29
+    events:
+      - http:
+          path: mobile/establecimientos
+          method: get
+          cors: true
+
+
+  
+
     # ========================
   #  NUEVAS FUNCIONES ADMIN
   # ========================
