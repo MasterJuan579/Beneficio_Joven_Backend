@@ -181,7 +181,7 @@ functions:
           method: get
           cors: true
 
-    listCategoriasMobile:
+  listCategoriasMobile:
     handler: src/handlers/mobile/list-categorias.handler
     timeout: 29
     events:
@@ -189,9 +189,18 @@ functions:
           path: mobile/categorias
           method: get
           cors: true
+  
+  getSucursalById:
+    handler: src/handlers/common/get-sucursal-by-id.handler
+    timeout: 29
+    events:
+      - http:
+          path: common/sucursales/{id}
+          method: get
+          cors: true
 
 
-    mobileListEstablecimientos:
+  mobileListEstablecimientos:
     handler: src/handlers/mobile/list-establecimientos.handler
     timeout: 29
     events:
@@ -200,6 +209,14 @@ functions:
           method: get
           cors: true
 
+  updateSucursal:
+    handler: src/handlers/admin/update-sucursal.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/sucursales/{id}
+          method: put
+          cors: true
 
   
 
