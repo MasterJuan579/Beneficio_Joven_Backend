@@ -189,25 +189,6 @@ functions:
           path: mobile/categorias
           method: get
           cors: true
-  
-  getSucursalById:
-    handler: src/handlers/common/get-sucursal-by-id.handler
-    timeout: 29
-    events:
-      - http:
-          path: common/sucursales/{id}
-          method: get
-          cors: true
-
-
-  mobileListEstablecimientos:
-    handler: src/handlers/mobile/list-establecimientos.handler
-    timeout: 29
-    events:
-      - http:
-          path: mobile/establecimientos
-          method: get
-          cors: true
 
   ubicacionSucursal:
     handler: src/handlers/mobile/ubicacion-sucursal.handler

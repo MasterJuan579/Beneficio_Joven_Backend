@@ -23,7 +23,6 @@ exports.handler = async (event) => {
     const connection = await getConnection();
 
     // Mantén los alias EXACTOS que consume Android: idCategoria, nombreCategoria
-
     const [categorias] = await connection.execute(`
       SELECT 
         idCategoria,
@@ -31,7 +30,7 @@ exports.handler = async (event) => {
       FROM Categoria
       ORDER BY nombre ASC
     `);
- 
+
     return {
       statusCode: 200,
       headers,
