@@ -181,7 +181,7 @@ functions:
           method: get
           cors: true
 
-    listCategoriasMobile:
+  listCategoriasMobile:
     handler: src/handlers/mobile/list-categorias.handler
     timeout: 29
     events:
@@ -191,7 +191,7 @@ functions:
           cors: true
 
 
-    mobileListEstablecimientos:
+  mobileListEstablecimientos:
     handler: src/handlers/mobile/list-establecimientos.handler
     timeout: 29
     events:
