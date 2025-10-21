@@ -209,6 +209,15 @@ functions:
           method: get
           cors: true
 
+  ubicacionSucursal:
+    handler: src/handlers/mobile/ubicacion-sucursal.handler
+    timeout: 29
+    events:
+      - http:
+          path: mobile/ubicacion-sucursales
+          method: get
+          cors: true
+
   updateSucursal:
     handler: src/handlers/admin/update-sucursal.handler
     timeout: 29
