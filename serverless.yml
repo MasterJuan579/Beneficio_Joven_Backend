@@ -217,6 +217,15 @@ functions:
           path: mobile/ubicacion-sucursales
           method: get
           cors: true
+  
+  perfilUsuario:
+    handler: src/handlers/mobile/perfil.handler
+    timeout: 29
+    events:
+      - http:
+          path: mobile/detalles-perfil
+          method: get
+          cors: true
 
   updateSucursal:
     handler: src/handlers/admin/update-sucursal.handler

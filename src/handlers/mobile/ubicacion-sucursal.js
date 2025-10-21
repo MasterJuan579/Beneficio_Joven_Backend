@@ -19,7 +19,7 @@ exports.handler = async (event) => {
     }
 
     const conn = await getConnection();
-    // Necesito devolver una lista completa de sucursales incluyendo el nombre, la latitud, la longitud, y la hora de apertura y cierre
+    // Devolver una lista completa de sucursales incluyendo el nombre, la latitud, la longitud, y la hora de apertura y cierre
     const [rows] = await conn.execute(`
       SELECT
         s.idSucursal,
