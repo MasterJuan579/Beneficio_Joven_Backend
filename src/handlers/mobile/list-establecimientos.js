@@ -46,7 +46,7 @@ exports.handler = async (event) => {
           SELECT 1
           FROM CategoriaEstablecimiento ce
           WHERE ce.idEstablecimiento = e.idEstablecimiento
-            AND ce.idCategoria IN (${categoryIds.map(() => '?').join(',')})
+          AND ce.idCategoria IN (${categoryIds.map(() => '?').join(',')})
         )
       `);
       params.push(...categoryIds);
@@ -63,25 +63,25 @@ exports.handler = async (event) => {
     );
 
     // listado + categorías agregadas
-    const [rows] = await conn.execute(
-    `
-    SELECT
+    const selectSQL = `
+      SELECT
         e.idEstablecimiento,
         e.nombre,
         e.logoURL,
-    (
-      SELECT GROUP_CONCAT(DISTINCT c.nombre ORDER BY c.nombre SEPARATOR ',')
-      FROM CategoriaEstablecimiento ce
-      JOIN Categoria c ON c.idCategoria = ce.idCategoria
-      WHERE ce.idEstablecimiento = e.idEstablecimiento
-    ) AS categorias
-    FROM Establecimiento e
-    ${whereSQL}         -- e.activo=1 + (q) + (EXISTS categorias) que ya construiste
-    ORDER BY e.nombre
-    LIMIT ? OFFSET ?
-    `,
-    [...params, pageSize, offset]
-    );
+        GROUP_CONCAT(DISTINCT c.nombre ORDER BY c.nombre SEPARATOR ',') AS categorias
+      FROM Establecimiento e
+      LEFT JOIN CategoriaEstablecimiento ce ON ce.idEstablecimiento = e.idEstablecimiento
+      LEFT JOIN Categoria c ON c.idCategoria = ce.idCategoria
+      ${whereSQL}
+      GROUP BY e.idEstablecimiento, e.nombre, e.logoURL
+      ORDER BY e.nombre
+      LIMIT ${Number(pageSize)} OFFSET ${Number(offset)}
+    `;
+
+    console.log('list-establecimientos SQL:', selectSQL);
+    console.log('list-establecimientos params:', params);
+
+    const [rows] = await conn.execute(selectSQL, params);
 
     // normaliza categorias a arreglo
     const data = rows.map(r => ({
