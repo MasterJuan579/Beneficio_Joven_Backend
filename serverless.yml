@@ -192,6 +192,15 @@ functions:
           method: get
           cors: true
 
+  listEstablecimientosMobile:
+    handler: src/handlers/mobile/list-establecimientos.handler
+    timeout: 29
+    events:
+      - http:
+          path: mobile/establecimientos
+          method: get
+          cors: true
+
   # -------------------------
   # NUEVO: Rutas para DUEÑO (owner)
   # -------------------------
