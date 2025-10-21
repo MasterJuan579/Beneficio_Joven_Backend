@@ -201,6 +201,9 @@ functions:
     events:
       - http:
           path: owner/sucursales/mias
+          method: get
+          cors: true
+
   ubicacionSucursal:
     handler: src/handlers/mobile/ubicacion-sucursal.handler
     timeout: 29
