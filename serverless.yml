@@ -201,6 +201,117 @@ functions:
     events:
       - http:
           path: owner/sucursales/mias
+  ubicacionSucursal:
+    handler: src/handlers/mobile/ubicacion-sucursal.handler
+    timeout: 29
+    events:
+      - http:
+          path: mobile/ubicacion-sucursales
+          method: get
+          cors: true
+
+  updateSucursal:
+    handler: src/handlers/admin/update-sucursal.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/sucursales/{id}
+          method: put
+          cors: true
+
+  
+
+    # ========================
+  #  NUEVAS FUNCIONES ADMIN
+  # ========================
+
+  adminBeneficiarios:
+    handler: src/handlers/admin/admin-beneficiarios.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/beneficiarios
+          method: get
+          cors: true
+
+  adminPromociones:
+    handler: src/handlers/admin/admin-promociones.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/promociones
+          method: get
+          cors: true
+
+  adminModeracionQueue:
+    handler: src/handlers/admin/admin-moderacion.queue.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/moderacion/queue
+          method: get
+          cors: true
+
+  adminModeracionRules:
+    handler: src/handlers/admin/admin-moderacion.rules.handler  
+    timeout: 29
+    events:
+      - http:
+          path: admin/moderacion/rules
+          method: get
+          cors: true
+
+  adminAuditoria:
+    handler: src/handlers/admin/admin-auditoria.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/auditoria/events
+          method: get
+          cors: true
+
+  adminMapa:
+    handler: src/handlers/admin/admin-mapa.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/mapa/geo
+          method: get
+          cors: true
+
+  toggleBeneficiarioStatus:
+    handler: src/handlers/admin/toggle-beneficiario-status.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/beneficiarios/{id}/toggle-status
+          method: patch
+          cors: true
+  
+  createBeneficiario:
+    handler: src/handlers/admin/create-beneficiario.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/beneficiarios
+          method: post
+          cors: true
+
+  importBeneficiarios:
+    handler: src/handlers/admin/import-beneficiarios.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/beneficiarios/import
+          method: post
+          cors: true
+  
+  listSucursalesMapa:
+    handler: src/handlers/common/list-sucursales-mapa.handler
+    timeout: 29
+    events:
+      - http:
+          path: common/mapa/sucursales
           method: get
           cors: true
 
@@ -278,6 +389,7 @@ functions:
           path: admin/moderacion/{queueId}/reject
           method: post
           cors: true
+  
 
 custom:
   serverless-offline:
