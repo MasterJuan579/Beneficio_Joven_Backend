@@ -13,13 +13,14 @@ provider:
   deploymentBucket:
     name: serverless-framework-deployments-us-east-2-ec22b131-f549
 
-
-
 plugins:
   - serverless-offline
 
 functions:
 
+  # -------------------------
+  # EXISTENTES
+  # -------------------------
   test:
     handler: src/handlers/test.handler
     timeout: 29
@@ -145,6 +146,7 @@ functions:
           path: upload-image
           method: post
           cors: true
+
   createEstablecimiento:
     handler: src/handlers/admin/create-establecimiento.handler
     timeout: 29
@@ -189,23 +191,25 @@ functions:
           path: mobile/categorias
           method: get
           cors: true
-  
-  getSucursalById:
-    handler: src/handlers/common/get-sucursal-by-id.handler
-    timeout: 29
-    events:
-      - http:
-          path: common/sucursales/{id}
-          method: get
-          cors: true
 
-
-  mobileListEstablecimientos:
+  listEstablecimientosMobile:
     handler: src/handlers/mobile/list-establecimientos.handler
     timeout: 29
     events:
       - http:
           path: mobile/establecimientos
+          method: get
+          cors: true
+
+  # -------------------------
+  # NUEVO: Rutas para DUEÑO (owner)
+  # -------------------------
+  ownerSucursalesList:
+    handler: src/handlers/owner/sucursales-list.handler
+    timeout: 29
+    events:
+      - http:
+          path: owner/sucursales/mias
           method: get
           cors: true
 
@@ -322,7 +326,90 @@ functions:
           path: admin/beneficiarios/import
           method: post
           cors: true
+  
+  listSucursalesMapa:
+    handler: src/handlers/common/list-sucursales-mapa.handler
+    timeout: 29
+    events:
+      - http:
+          path: common/mapa/sucursales
+          method: get
+          cors: true
 
+  ownerSucursalGet:
+    handler: src/handlers/owner/sucursal-get.handler
+    timeout: 29
+    events:
+      - http:
+          path: owner/sucursales/{id}
+          method: get
+          cors: true
+
+  ownerPromosListBySucursal:
+    handler: src/handlers/owner/promos-list-by-sucursal.handler
+    timeout: 29
+    events:
+      - http:
+          path: owner/sucursales/{id}/promos
+          method: get
+          cors: true
+
+  ownerPromosCreateForSucursal:
+    handler: src/handlers/owner/promos-create-for-sucursal.handler
+    timeout: 29
+    events:
+      - http:
+          path: owner/sucursales/{id}/promos
+          method: post
+          cors: true
+
+  ownerModerationRuleGet:
+    handler: src/handlers/owner/moderacion-rule-get.handler
+    timeout: 29
+    events:
+      - http:
+          path: owner/establecimientos/{id}/moderacion-rule
+          method: get
+          cors: true
+
+  ownerModerationRulePut:
+    handler: src/handlers/owner/moderacion-rule-put.handler
+    timeout: 29
+    events:
+      - http:
+          path: owner/establecimientos/{id}/moderacion-rule
+          method: put
+          cors: true
+
+  # -------------------------
+  # NUEVO: Moderación (admin)
+  # -------------------------
+  adminModerationList:
+    handler: src/handlers/admin/moderation-list.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/moderacion
+          method: get
+          cors: true
+
+  adminModerationApprove:
+    handler: src/handlers/admin/moderation-approve.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/moderacion/{queueId}/approve
+          method: post
+          cors: true
+
+  adminModerationReject:
+    handler: src/handlers/admin/moderation-reject.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/moderacion/{queueId}/reject
+          method: post
+          cors: true
   
 
 custom:
