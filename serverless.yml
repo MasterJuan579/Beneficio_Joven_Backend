@@ -313,6 +313,16 @@ functions:
           path: admin/beneficiarios/import
           method: post
           cors: true
+  
+  listSucursalesMapa:
+    handler: src/handlers/common/list-sucursales-mapa.handler
+    timeout: 29
+    events:
+      - http:
+          path: common/mapa/sucursales
+          method: get
+          cors: true
+
 
   
 
