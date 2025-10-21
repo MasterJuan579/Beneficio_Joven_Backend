@@ -77,8 +77,6 @@ exports.handler = async (event) => {
 
     const [rows] = await conn.execute(selectSQL, params);
 
-    const [rows] = await conn.execute(sqlListado, params);
-
     const data = rows.map(r => ({
       idEstablecimiento: r.idEstablecimiento,
       nombre: r.nombre,
