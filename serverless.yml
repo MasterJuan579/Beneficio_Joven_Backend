@@ -257,7 +257,22 @@ functions:
           method: get
           cors: true
 
-  
+  mobile-list-promociones-dueno:
+    handler: src/handlers/mobile/list-promociones-dueno.handler
+    events:
+      - http:
+          path: mobile/promociones-establecimiento-dueno
+          method: get
+          cors: true
+
+  validar-qr:
+    handler: src/handlers/mobile/validar-qr.handler
+    events:
+      - http:
+          path: mobile/verificar-qr
+          method: post
+          cors: true
+
     # ========================
   #  NUEVAS FUNCIONES ADMIN
   # ========================

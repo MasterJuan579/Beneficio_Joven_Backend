@@ -32,7 +32,7 @@ exports.handler = async (event) => {
 
     // Obtiene cada variable del body por separado y lo convierte al tipo correspondiente
     const body = JSON.parse(event.body);
-    const userId = Number(body.userId);
+    const idBeneficiario = Number(body.userId);
     const idPromocion = Number(body.idPromocion);
     const expirationTime = Number(body.expirationTime);
 
@@ -53,10 +53,23 @@ exports.handler = async (event) => {
     }
 
     // Inserta el canje en la base de datos
+    await conn.execute(`
+      INSERT INTO AplicacionPromocion (idBeneficiario, idPromocion)
+      VALUES (?, ?)
+    `, [idBeneficiario, idPromocion]);
 
+    // Regresa SOLAMENTE el status de éxito
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({
+        success: true,
+        message: 'Descuento aplicado correctamente'
+      })
+    };
     
   } catch (err) {
-    console.error('[promociones-establecimiento] error:', err);
+    console.error('[validar-qr] error:', err);
     return {
       statusCode: 500,
       headers,

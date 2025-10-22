@@ -2,6 +2,11 @@ require('dotenv').config();
 const { getConnection } = require('../../config/database');
 const { verifyRole } = require('../../middleware/auth');
 
+/**
+ * /GET /mobile/establecimientos
+ * Retorna establecimientos con filtros de búsqueda y paginación.
+ */
+
 exports.handler = async (event) => {
   const headers = {
     'Content-Type': 'application/json',

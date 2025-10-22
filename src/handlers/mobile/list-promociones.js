@@ -14,26 +14,20 @@ exports.handler = async (event) => {
     'Access-Control-Allow-Headers': 'Content-Type,Authorization',
     'Access-Control-Allow-Methods': 'GET,OPTIONS'
   };
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' };
-  }
+  if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers, body: '' };
 
   try {
-    // Auth (usa los mismos roles que en tus otros endpoints móviles)
     try {
       verifyRole(event, ['beneficiario', 'dueno', 'administrador']);
     } catch (e) {
-      return {
-        statusCode: 401,
-        headers,
-        body: JSON.stringify({ success: false, message: e.message || 'Unauthorized' }),
-      };
+      return { statusCode: 401, headers, body: JSON.stringify({ success: false, message: e.message || 'Unauthorized' }) };
     }
 
-    const qs = event.queryStringParameters || {};
-    const idEstablecimiento = Number(qs.idEstablecimiento);
-    const page = Math.max(1, Number(qs.page || 1));
-    const pageSize = Math.min(100, Math.max(1, Number(qs.pageSize || 20))); // hard limit
+    const q = event.queryStringParameters || {};
+    const idEstablecimiento = Number(q.idEstablecimiento);
+    const page = Math.max(parseInt(q.page || '1', 10), 1);
+    const pageSize = Math.min(Math.max(parseInt(q.pageSize || '20', 10), 1), 100);
+    const offset = (page - 1) * pageSize;
 
     if (!idEstablecimiento || Number.isNaN(idEstablecimiento)) {
       return {
@@ -43,62 +37,49 @@ exports.handler = async (event) => {
       };
     }
 
-    const offset = (page - 1) * pageSize;
-
     const conn = await getConnection();
 
     // Total (para paginación)
-    const [countRows] = await conn.execute(
-      `
+    const [countRows] = await conn.execute(`
       SELECT COUNT(*) AS total
       FROM Promocion p
       JOIN Establecimiento e ON e.idEstablecimiento = p.idEstablecimiento
       WHERE p.idEstablecimiento = ?
         AND e.activo = 1
         AND p.esVigente = 1
-        AND (p.status IS NULL OR p.status = 'ACTIVA')
+        AND (p.status IS NULL OR p.status = 'APPROVED')
         AND (p.validFrom IS NULL OR p.validFrom <= NOW())
         AND (p.validTo   IS NULL OR p.validTo   >= NOW())
-      `,
-      [idEstablecimiento]
+      `, [idEstablecimiento]
     );
     const total = countRows?.[0]?.total || 0;
 
     // Datos
-    const [rows] = await conn.execute(
-      `
+    const [rows] = await conn.execute(`
       SELECT
         p.idPromocion,
         p.idEstablecimiento,
-        e.nombre                     AS establecimiento,
-        e.logoURL                    AS establecimientoLogoURL,
+        e.nombre AS establecimiento,
+        e.logoURL AS establecimientoLogoURL,
         p.titulo,
         p.descripcion,
         p.imagenURL,
-        p.discountType,
-        p.discountValue,
-        p.limitQuantity,
-        p.unlimited,
         p.validFrom,
         p.validTo,
         p.esVigente,
         p.status,
-        p.fechaRegistro,
-        p.redeemedCount,
-        p.idSucursal,
-        p.idCategoriaCupon
+        p.fechaRegistro
       FROM Promocion p
       JOIN Establecimiento e ON e.idEstablecimiento = p.idEstablecimiento
       WHERE p.idEstablecimiento = ?
         AND e.activo = 1
         AND p.esVigente = 1
-        AND (p.status IS NULL OR p.status = 'ACTIVA')
+        AND (p.status IS NULL OR p.status = 'APPROVED')
         AND (p.validFrom IS NULL OR p.validFrom <= NOW())
         AND (p.validTo   IS NULL OR p.validTo   >= NOW())
       ORDER BY p.fechaRegistro DESC
-      LIMIT ? OFFSET ?
-      `,
-      [idEstablecimiento, pageSize, offset]
+      LIMIT ${Number(pageSize)} OFFSET ${Number(offset)}
+      `, [idEstablecimiento]
     );
 
     return {
@@ -117,17 +98,11 @@ exports.handler = async (event) => {
           titulo: r.titulo,
           descripcion: r.descripcion,
           imagenURL: r.imagenURL,
-          discountType: r.discountType,     // 'PORCENTAJE' | 'MONTO' | 'OTRO'
-          discountValue: Number(r.discountValue || 0),
-          limitQuantity: r.limitQuantity,
-          unlimited: !!r.unlimited,
           validFrom: r.validFrom,
           validTo: r.validTo,
-          vigente: !!r.esVigente,
-          status: r.status,                 // 'ACTIVA' (según tu enum)
-          redeemedCount: r.redeemedCount || 0,
-          idSucursal: r.idSucursal,
-          idCategoriaCupon: r.idCategoriaCupon,
+          esVigente: r.esVigente,
+          status: r.status,
+          fechaRegistro: r.fechaRegistro
         })),
       }),
     };

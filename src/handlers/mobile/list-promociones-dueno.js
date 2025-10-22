@@ -63,7 +63,7 @@ exports.handler = async (event) => {
       WHERE p.idEstablecimiento = ?
         AND e.activo = 1
         AND p.esVigente = 1
-        AND (p.status IS NULL OR p.status = 'APPROVED')
+        AND (p.status IS NULL OR p.status = 'APPROVED') -- también mostrar las PENDING
         AND (p.validFrom IS NULL OR p.validFrom <= NOW())
         AND (p.validTo   IS NULL OR p.validTo   >= NOW())
       `, [idEstablecimiento]
