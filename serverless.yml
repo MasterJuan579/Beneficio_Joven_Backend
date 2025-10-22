@@ -450,9 +450,6 @@ functions:
           path: common/sucursales/{id}
           method: get
           cors: true
-  
-
-  
 
 custom:
   serverless-offline:

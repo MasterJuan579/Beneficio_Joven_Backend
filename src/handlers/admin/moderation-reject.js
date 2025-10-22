@@ -1,32 +1,63 @@
+require('dotenv').config();
 const { getConnection } = require('../../config/database');
-const { verifyRole, getUser } = require('../../middleware/auth');
+const { verifyRole } = require('../../middleware/auth');
 
 exports.handler = async (event) => {
-  const headers = { 'Content-Type':'application/json', 'Access-Control-Allow-Origin':'*', 'Access-Control-Allow-Headers':'Content-Type,Authorization', 'Access-Control-Allow-Methods':'POST,OPTIONS' };
-  if (event.httpMethod === 'OPTIONS') return { statusCode:200, headers, body:'' };
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'Access-Control-Allow-Methods': 'POST,OPTIONS',
+  };
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 200, headers, body: '' };
+  }
 
   try {
-    verifyRole(event, ['administrador','moderador']);
-    const adminUser = getUser(event)?.email || 'admin@bj.mx';
-    const { queueId } = event.pathParameters || {};
-    const body = JSON.parse(event.body || '{}');
-    const reason = body.reason || 'Rechazado';
+    const user = verifyRole(event, ['administrador']);
+    const idPromocion = event.pathParameters?.queueId;
 
-    const conn = await getConnection();
-    const [[q]] = await conn.query(`SELECT * FROM ModeracionQueue WHERE id=? FOR UPDATE`, [queueId]);
-    if (!q || q.status !== 'PENDING') return { statusCode:400, headers, body: JSON.stringify({ success:false, message:'No pendiente' }) };
+    if (!idPromocion) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ success: false, message: 'ID de promoción no proporcionado' }),
+      };
+    }
 
-    await conn.query(
-      `UPDATE ModeracionQueue SET status='REJECTED', reviewedBy=?, reviewedAt=NOW(), reason=? WHERE id=?`,
-      [adminUser, reason, queueId]
+    const connection = await getConnection();
+
+    const [promo] = await connection.execute(
+      'SELECT idPromocion, status FROM Promocion WHERE idPromocion = ? LIMIT 1',
+      [idPromocion]
     );
-    await conn.query(
-      `INSERT INTO ModeracionLog(queueId,adminUser,action,reason) VALUES(?,?,'REJECTED',?)`,
-      [queueId, adminUser, reason]
+
+    if (promo.length === 0) {
+      return { statusCode: 404, headers, body: JSON.stringify({ success: false, message: 'Promoción no encontrada' }) };
+    }
+
+    if (promo[0].status !== 'PENDING') {
+      return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'La promoción no está pendiente' }) };
+    }
+
+    await connection.execute(
+      'UPDATE Promocion SET status = "REJECTED" WHERE idPromocion = ?',
+      [idPromocion]
     );
 
-    return { statusCode:200, headers, body: JSON.stringify({ success:true }) };
-  } catch (err) {
-    return { statusCode:400, headers, body: JSON.stringify({ success:false, message: err.message }) };
+    return {
+      statusCode: 200,
+      headers,
+      body: JSON.stringify({ success: true, message: 'Promoción rechazada correctamente' }),
+    };
+
+  } catch (error) {
+    console.error('❌ Error al rechazar promoción:', error);
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({ success: false, message: 'Error al rechazar promoción', error: error.message }),
+    };
   }
 };
