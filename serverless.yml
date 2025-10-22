@@ -231,6 +231,15 @@ functions:
           method: get
           cors: true
 
+  generarCodigoQR:
+    handler: src/handlers/mobile/generador-qr.handler
+    timeout: 29
+    events:
+      - http:
+          path: mobile/generar-qr/{idPromocion}
+          method: post
+          cors: true
+
   updateSucursal:
     handler: src/handlers/admin/update-sucursal.handler
     timeout: 29
