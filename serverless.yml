@@ -419,6 +419,17 @@ functions:
           path: admin/moderacion/{queueId}/reject
           method: post
           cors: true
+
+  getSucursalByid:
+    handler: src/handlers/common/get-sucursal-by-id.handler
+    timeout: 29
+    events:
+      - http:
+          path: common/sucursales/{id}
+          method: get
+          cors: true
+  
+
   
 
 custom:
