@@ -249,8 +249,15 @@ functions:
           method: put
           cors: true
 
-  
+  mobile-list-promociones:
+    handler: src/handlers/mobile/list-promociones.handler
+    events:
+      - http:
+          path: mobile/promociones-establecimiento
+          method: get
+          cors: true
 
+  
     # ========================
   #  NUEVAS FUNCIONES ADMIN
   # ========================
