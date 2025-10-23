@@ -63,9 +63,7 @@ exports.handler = async (event) => {
       WHERE p.idEstablecimiento = ?
         AND e.activo = 1
         AND p.esVigente = 1
-        AND (p.status IS NULL OR p.status = 'APPROVED') -- también mostrar las PENDING
-        AND (p.validFrom IS NULL OR p.validFrom <= NOW())
-        AND (p.validTo   IS NULL OR p.validTo   >= NOW())
+        AND (p.status IS NULL OR p.status = 'APPROVED')
       `, [idEstablecimiento]
     );
     const total = countRows?.[0]?.total || 0;
@@ -91,8 +89,6 @@ exports.handler = async (event) => {
         AND e.activo = 1
         AND p.esVigente = 1
         AND (p.status IS NULL OR p.status = 'APPROVED')
-        AND (p.validFrom IS NULL OR p.validFrom <= NOW())
-        AND (p.validTo   IS NULL OR p.validTo   >= NOW())
       ORDER BY p.fechaRegistro DESC
       LIMIT ${Number(pageSize)} OFFSET ${Number(offset)}
       `, [idEstablecimiento]
