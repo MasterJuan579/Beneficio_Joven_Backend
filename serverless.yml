@@ -458,6 +458,16 @@ functions:
           path: common/sucursales/{id}
           method: get
           cors: true
+  
+  getAdminPromocionById:
+    handler: src/handlers/admin/get-promocion-by-id.handler
+    timeout: 29
+    events:
+      - http:
+          path: admin/promociones/{id}
+          method: get
+          cors: true
+
 
 custom:
   serverless-offline:
