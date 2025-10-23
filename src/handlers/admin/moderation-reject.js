@@ -15,49 +15,37 @@ exports.handler = async (event) => {
   }
 
   try {
-    const user = verifyRole(event, ['administrador']);
-    const idPromocion = event.pathParameters?.queueId;
+    verifyRole(event, ['administrador']);
+    const queueId = event.pathParameters?.queueId;
+    const body = JSON.parse(event.body || '{}');
+    const { justificacion } = body;
 
-    if (!idPromocion) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ success: false, message: 'ID de promoción no proporcionado' }),
-      };
+    if (!queueId) {
+      return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'ID no proporcionado' }) };
+    }
+
+    if (!justificacion || justificacion.trim().length < 5) {
+      return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'Se requiere una justificación válida' }) };
     }
 
     const connection = await getConnection();
 
-    const [promo] = await connection.execute(
-      'SELECT idPromocion, status FROM Promocion WHERE idPromocion = ? LIMIT 1',
-      [idPromocion]
-    );
-
-    if (promo.length === 0) {
-      return { statusCode: 404, headers, body: JSON.stringify({ success: false, message: 'Promoción no encontrada' }) };
-    }
-
-    if (promo[0].status !== 'PENDING') {
-      return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'La promoción no está pendiente' }) };
-    }
-
     await connection.execute(
-      'UPDATE Promocion SET status = "REJECTED" WHERE idPromocion = ?',
-      [idPromocion]
+      'UPDATE Promocion SET status = "REJECTED", adminJustificacion = ? WHERE idPromocion = ?',
+      [justificacion.trim(), queueId]
     );
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ success: true, message: 'Promoción rechazada correctamente' }),
+      body: JSON.stringify({ success: true, message: 'Promoción rechazada con justificación registrada' }),
     };
-
   } catch (error) {
     console.error('❌ Error al rechazar promoción:', error);
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ success: false, message: 'Error al rechazar promoción', error: error.message }),
+      body: JSON.stringify({ success: false, message: 'Error al rechazar la promoción', error: error.message }),
     };
   }
 };
