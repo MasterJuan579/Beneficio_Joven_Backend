@@ -307,6 +307,35 @@ functions:
           method: post
           cors: true
 
+  # -------------------------
+  # Recuperar contraseña
+  # -------------------------
+
+  forgot-password-email:
+    handler: src/handlers/auth/forgot-password-email.handler
+    events:
+      - http:
+          path: auth/forgot-password-email
+          method: post
+          cors: true
+
+  reset-password-form:
+    handler: src/handlers/auth/reset-password-form.handler
+    events:
+      - http:
+          path: auth/reset-password-form
+          method: get
+          cors: true
+
+  reset-password-apply:
+    handler: src/handlers/auth/reset-password-apply.handler
+    events:
+      - http:
+          path: auth/reset-password-apply
+          method: post
+          cors: true
+
+
     # ========================
   #  NUEVAS FUNCIONES ADMIN
   # ========================
