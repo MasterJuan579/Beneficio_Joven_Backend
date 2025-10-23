@@ -20,10 +20,9 @@ exports.handler = async (event) => {
     }
 
     // idEstablecimiento: esto sale de una query a partir del idDueno
-    // idPromocion: tiene que venir del body
+    // idPromocion: tiene que venir de la URL
     const idDueno = user.id;
-    const body = JSON.parse(event.body);
-    const idPromocion = body.idPromocion;
+    const idPromocion = event.pathParameters?.idPromocion;
     if (!idPromocion) {
         return {
             statusCode: 400,

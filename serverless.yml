@@ -303,7 +303,7 @@ functions:
     timeout: 29
     events:
       - http:
-          path: mobile/desactivar-promocion
+          path: mobile/desactivar-promocion/{idPromocion}
           method: post
           cors: true
 
