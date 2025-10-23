@@ -273,6 +273,14 @@ functions:
           method: post
           cors: true
 
+  crear-promocion:
+    handler: src/handlers/mobile/crear-promocion.handler
+    events:
+      - http:
+          path: mobile/crear-nueva-promocion
+          method: post
+          cors: true
+
     # ========================
   #  NUEVAS FUNCIONES ADMIN
   # ========================

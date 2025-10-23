@@ -25,7 +25,7 @@ exports.handler = async (event) => {
 
   try {
     try {
-      verifyRole(event, ['dueno']);
+      user = verifyRole(event, ['dueno']);
     } catch (e) {
       return { statusCode: 401, headers, body: JSON.stringify({ success: false, message: e.message || 'Unauthorized' }) };
     }
@@ -35,6 +35,7 @@ exports.handler = async (event) => {
     const idBeneficiario = Number(body.userId);
     const idPromocion = Number(body.idPromocion);
     const expirationTime = Number(body.expirationTime);
+    const idDueno = user.id;
 
     const current_timestamp = Math.floor(Date.now() / 1000);
 
@@ -48,6 +49,28 @@ exports.handler = async (event) => {
         body: JSON.stringify({
           success: false,
           message: 'El código QR ha expirado'
+        })
+      };
+    }
+
+    // Busca un id de establecimiento asociado al dueño autenticado
+    const [rows] = await conn.execute(`
+        SELECT idEstablecimiento FROM Promocion
+        WHERE idPromocion = ? 
+        AND idEstablecimiento = (
+            SELECT idEstablecimiento 
+            FROM DuenoEstablecimiento 
+            WHERE idDueno = ?
+        )
+    `, [idPromocion, idDueno]);
+
+    if (!rows || rows.length === 0) {
+      return {
+        statusCode: 403,
+        headers,
+        body: JSON.stringify({
+          success: false,
+          message: 'Establecimiento incorrecto: no se puede canjear esta promoción'
         })
       };
     }
