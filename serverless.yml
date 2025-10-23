@@ -281,6 +281,23 @@ functions:
           method: post
           cors: true
 
+  historialCanje:
+    handler: src/handlers/mobile/historial-canje.handler
+    events:
+      - http:
+          path: mobile/registro-canje
+          method: get
+          cors: true
+
+  validarFolio:
+    handler: src/handlers/mobile/validar-folio.handler
+    timeout: 29
+    events:
+      - http:
+          path: mobile/validar-folio
+          method: get
+          cors: true
+
     # ========================
   #  NUEVAS FUNCIONES ADMIN
   # ========================
