@@ -77,8 +77,8 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers, body: JSON.stringify({ success:true, message: genericMsg }) };
   } catch (e) {
     console.error('forgot-password-email error', e);
-    return { statusCode: 200, headers, body: JSON.stringify({ success:true, message: genericMsg }) };
+    return { statusCode: 500, headers, body: JSON.stringify({ success:true, message: genericMsg }) };
   } finally {
-    if (conn) try { await conn.end(); } catch {}
+    if (conn) try { await conn.release(); } catch {}
   }
 };

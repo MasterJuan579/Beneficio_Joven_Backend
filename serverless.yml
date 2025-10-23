@@ -307,12 +307,21 @@ functions:
           method: post
           cors: true
 
+  listNotificaciones:
+    handler: src/handlers/mobile/lista-notificaciones.handler
+    timeout: 29
+    events:
+      - http:
+          path: mobile/notificaciones
+          method: get
+          cors: true
+
   # -------------------------
   # Recuperar contraseña
   # -------------------------
 
   forgot-password-email:
-    handler: src/handlers/auth/forgot-password-email.handler
+    handler: src/handlers/auth/forgot-passwor-email.handler
     events:
       - http:
           path: auth/forgot-password-email
